@@ -16,10 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QTreeWidget" name="tree">
-      <property name="dragEnabled">
-       <bool>true</bool>
-      </property>
+     <widget class="Tree" name="tree">
       <column>
        <property name="text">
         <string>Name</string>
@@ -140,6 +137,13 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Tree</class>
+   <extends>QTreeWidget</extends>
+   <header>widgets/Tree.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
