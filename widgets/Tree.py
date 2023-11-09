@@ -2,12 +2,23 @@ import sys
 from PyQt5.QtWidgets import QTreeWidget, QAbstractItemView
 from PyQt5 import QtGui, QtCore
 
+from src.GuiInstrument import GuiInstrument, GuiDevice
+
 
 class Tree(QTreeWidget):
     def __init__(self, *args, **kwargs):
         super(Tree, self).__init__()
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setDragDropMode(QAbstractItemView.DragDrop)
+    
+    def __iter__(self):
+        # make the tree iterable
+        for i in range(self.topLevelItemCount()):
+            yield self.topLevelItem(i)
+    
+    def __getitem__(self, key):
+        # make the tree subscriptable
+        return self.topLevelItem(key)
         
     def selectedItem(self):
         # return theselected item
@@ -16,47 +27,47 @@ class Tree(QTreeWidget):
             return None
         return selected[0]
     
-    def selectedItemData(self):
-        # return the data of the selected item
-        selected = self.selectedItem()
-        if selected is None:
-            return None
-        return selected.data(0, QtCore.Qt.UserRole)
+    @staticmethod
+    def getData(item):
+        # return the data of an item
+        return item.data(0, QtCore.Qt.UserRole)
 
-    def addData(self, item, dic):
-        # add data to an item
-        item_dic = item.data(0, QtCore.Qt.UserRole)
-        merge = {**item_dic, **dic}
-        item.setData(0, QtCore.Qt.UserRole, merge)
+    def setData(self, item, data):
+        # set the data of an item
+        item.setData(0, QtCore.Qt.UserRole, data)
+    
+    def findItemByData(self, data):
+        # find an item by its data, including subitems
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            if self.getData(item) == data:
+                return item
+            for j in range(item.childCount()):
+                subitem = item.child(j)
+                if self.getData(subitem) == data:
+                    return subitem
 
     def removeSelected(self):
         # remove selected item including its parent, brothers and sisters
         selected_index = self.indexOfTopLevelItem(self.selectedItem())
         self.takeTopLevelItem(selected_index)
 
-    def isTopLevel(self, item):
-        # return True if the item is a top level item
-        return item.parent() is None
-
-    def selectLastItem(self):
-        # select the last item
-        self.setCurrentItem(self.topLevelItem(self.topLevelItemCount()-1))
-
     def mimeTypes(self):
         # define the mime types that can be dragged
-        return ['device-name']
+        return ['device-name', 'instrument-name']
 
     def mimeData(self, items):
-        # define the mime data that can be dragged
+        # what happens when the item is dragged
         mime_data = QtCore.QMimeData()
         item = items[0]
-        if self.isTopLevel(item):
-            b_name = bytes(item.text(0), 'utf-8')
+        # get data:
+        data = self.getData(item)
+        if isinstance(data, GuiInstrument):
+            b_name = bytes(data.nickname, 'utf-8')
             mime_data.setData('instrument-name', b_name)
-        else:
-            item_parent = items[0].parent()
-            b_parent_name = bytes(item_parent.text(0), 'utf-8')
-            b_name =  bytes(item.text(0), 'utf-8')
+        elif isinstance(data, GuiDevice):
+            b_parent_name = bytes(data.parent.nickname, 'utf-8')
+            b_name =  bytes(data.name, 'utf-8')
             mime_data.setData('instrument-name', b_parent_name)
             mime_data.setData('device-name', b_name)
         return mime_data
@@ -64,4 +75,4 @@ class Tree(QTreeWidget):
     def dropMimeData(self, parent, row, data, action):
         # what happens when the item is dropped
         # implemented by children
-        return None
+        pass

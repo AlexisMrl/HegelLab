@@ -1,10 +1,8 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
-from PyQt5 import uic, QtCore
+import sys, traceback
 
 from views import Main, Rack, Display
-from src import Model, Errors
-
+from src import Model, Popup, SweepThread
+from src.GuiInstrument import GuiInstrument, GuiDevice
 
 # HegelLab is made to support any instrument with minimal effort.
 # It should be enough to add the instrument class to the dictionary below.
@@ -14,33 +12,50 @@ supported_instruments = {
         "pyhegel_class": instruments.dummy,
         "has_address": False,
         "has_port": False,
-        "has_gui": False,
+        "has_sweep_gui": False,
+        "has_config_gui": False,
         "devices_name": ["rand", "volt", "current"]
-    }
+    },
+    "zurich": {
+        "pyhegel_class": instruments.zurich_UHF,
+        "has_address": True,
+        "has_port": False,
+        "has_sweep_gui": False,
+        "has_config_gui": False,
+        "devices_name": []
+    },
 }
 
-# conventions:
-# window_ : build and show a window
-# gui_ : manage the gui
-# ask_ : (from other windows) ask the lab to do something
-
-class HegelLab(QMainWindow):
+class HegelLab():
 
     def __init__(self):
         super(HegelLab, self).__init__()
 
+        # model, views
         self.model = Model.Model()
         self.view_main = Main.Main(self)
         self.view_rack = Rack.Rack(self)
         self.view_display = Display.Display(self)
         
-        self.error = Errors.Errors()
-
+        # popups
+        self.pop = Popup.Popup()
+        
+        # data
         self.supported_instruments = supported_instruments
-        self.loaded_gui_instruments = {} # {nickname: GuiInstrument}
+        self.gui_instruments = {} # {nickname: GuiInstrument}
 
+        # sweep
+        self.sweep_thread = SweepThread.SweepThread(self.model.startSweep)
+        self.sweep_thread.progress_signal.connect(self.onSweepProgress)
+        self.sweep_thread.error_signal.connect(self.onSweepError)
+        self.sweep_thread.finished_signal.connect(self.onSweepFinished)
+
+
+        # show main window
         self.showMain()
         
+    # -- GENERAL --
+
     def showMain(self):
         self.view_main.show()
         self.view_main.raise_()
@@ -52,123 +67,175 @@ class HegelLab(QMainWindow):
     def showDisplay(self):
         self.view_display.show()
         self.view_display.raise_()
+    
+    def close(self):
+        # close all the windows
+        if self.pop.askQuit() == True:
+            self.view_display.close()
+            self.view_rack.close()
+            return True
+        return False
         
+    def showInstrumentConfig(self, gui_instr):
+        # launch the config window for the selected instrument
+        #self.view_rack.setEnabled(False)
+        #self.view_rack.window_configInstrument(gui_instr)
+        print(gui_instr.nickname)
+
+    def showDeviceConfig(self, gui_dev):
+        # launch the config window for the selected device
+        #self.view_rack.setEnabled(False)
+        #self.view_rack.window_configDevice(gui_dev)
+        print(gui_dev.name)
+
+
+    # -- RACK --
+
     def checkInstrLoadingName(self, name):
         # check if the loading name is already used
         i = 1
         base = name
-        while name in self.loaded_gui_instruments.keys():
+        while name in self.gui_instruments.keys():
             name = base + ' ({})'.format(i)
             i += 1
         return name
 
-    def buildInstrDevName(self, instr, dev):
-        return instr + ' - ' + dev
-    
-    def loadAndAddInstrument(self, instr_name, instr_nickname, address):
-        # load in pyHege, instanciate GuiInstrument, update gui
-        instr_cls = supported_instruments[instr_name]['pyhegel_class']
-        ph_instr = self.model.loadInstrument(instr_cls, address)
-        devs = self.model.getDevices(ph_instr, 
-                                    *self.supported_instruments[instr_name]['devices_name'])
+    def buildDevDisplayName(self, instr_name, dev_name):
+        # build the display name of a device
+        return instr_name + ' - ' + dev_name
+
+    def buildGuiInstrument(self, instr_nickname, instr_cls, address):
+        # instantiate a GuiInstrument
+        gui_instr = GuiInstrument(instr_nickname, instr_cls, address)
+        self.gui_instruments[instr_nickname] = gui_instr
+        return gui_instr
+
+    def buildGuiDevice(self, display_name, name, ph_dev):
+        gui_dev = GuiDevice(display_name, name, ph_dev)
+        return gui_dev
+
+    def loadNewInstrument(self, instr_name, instr_nickname, address):
         if instr_nickname == '':
             instr_nickname = instr_name
         instr_nickname = self.checkInstrLoadingName(instr_nickname)
-        # create the GuiInstrument
-        gui_instr = GuiInstrument(instr_cls, instr_nickname, address,
-                                  ph_instr,
-                                  devs)
-        self.loaded_gui_instruments[instr_nickname] = gui_instr
+
+        # load in pyHegel
+        instr_cls = supported_instruments[instr_name]['pyhegel_class']
+        try:
+            ph_instr = self.model.loadInstrument(instr_cls, address, instr_nickname)
+        except Exception as e:
+            # get traceback for the messagebox:
+            tb_str = ''.join(traceback.format_tb(e.__traceback__))
+            self.pop.instrLoadError(e, tb_str); return
+
+        # build GuiInstrument
+        gui_instr = self.buildGuiInstrument(instr_nickname, instr_cls, address)
+        gui_instr.ph_instr = ph_instr
+        
+        # fill GuiInstrument with GuiDevices
+        instr_devices = []
+        for name in supported_instruments[instr_name]['devices_name']:
+            display_name = self.buildDevDisplayName(instr_nickname, name)
+            ph_dev = self.model.getDevice(ph_instr, name)
+            gui_dev = self.buildGuiDevice(display_name, name, ph_dev)
+            gui_dev.parent = gui_instr
+            gui_instr.gui_devices[name] = gui_dev
+
         # update gui
         self.view_rack.gui_addGuiInstrument(gui_instr)
         self.view_rack.win_add.close()
             
-    def unloadAndRemoveInstrument(self, nickname):
-        # unload in pyHegel, remove GuiInstrument, update gui
-        gui_instr = self.loaded_gui_instruments[nickname]
-        self.model.unloadInstrument(gui_instr.instr)
-        del self.loaded_gui_instruments[nickname]
-        self.view_rack.gui_removeInstrument()
-    
-    def getValueAndUpdateRack(self, nickname, dev_name):
-        # get the value of a device and update the rack gui
-        gui_instr = self.loaded_gui_instruments[nickname]
-        dev = gui_instr.devices[dev_name]
-        value = self.model.getValue(dev)
-        self.view_rack.gui_updateDeviceValue(nickname, dev_name, value)
-    
+    def getValue(self, gui_dev):
+        # get the value of the GuiDevice and update the gui
+        value = self.model.getValue(gui_dev.ph_dev)
+        self.view_rack.gui_updateDeviceValue(gui_dev, value)
+
+
+    # -- SWEEP --
+
     def addSweepDev(self, instr_nickname, dev_name):
         # add a device to the sweep tree, launch the config window
-        name = self.buildInstrDevName(instr_nickname, dev_name)
-        data = {'instrument':instr_nickname, 'device':dev_name}
-        self.view_main.gui_addSweepItem(name, data)
-        self.view_main.tree_sw.selectLastItem()
-        self.showSweepConfig()
-    
-    def showSweepConfig(self):
-        # launch the config window for the selected sweep device
-        self.view_main.setEnabled(False)
-        self.view_main.window_configSweep()
-    
-    def addOutputDev(self, instr_nickname, dev_name):
-        # add a device to the output tree, launch the config window
-        name = self.buildInstrDevName(instr_nickname, dev_name)
-        data = (instr_nickname, dev_name)
-        self.view_main.gui_addOutItem(name, data)
-    
-    def setSweepValues(self, instr, dev, start, stop, npts):
-        # set the sweep values for current sweep item
-        self.view_main.gui_setSweepValues(start, stop, npts)
-        self.view_main.win_sw_setup.close()
-    
-    def _prepareSweepDevsStartStopNpts(self):
-        # go through self.view_main.tree_sw and return devs, start, stop, npts:
-        devs, start, stop, npts = [], [], [], []
-        for i in range(self.view_main.tree_sw.topLevelItemCount()):
-            item = self.view_main.tree_sw.topLevelItem(i)
-            dic = item.data(0, QtCore.Qt.UserRole)
-            devs.append(dic['device'])
-            sweep_values = dic['sweep_values']
-            start.append(sweep_values[0])
-            stop.append(sweep_values[1])
-            npts.append(sweep_values[2])
-        return devs, start, stop, npts
+        gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_name]
+        if self.view_main.tree_sw.findItemByData(gui_dev) != None:
+            self.pop.devAlreadyHere(); return
+        self.view_main.gui_addSweepGuiDev(gui_dev)
+        self.showSweepConfig(gui_dev)
 
-    def onStartSweep(self):
-        # retreive all parameters
-        try:
-            devs, start, stop, npts = self._prepareSweepDevsStartStopNpts()
-        except KeyError:
-            self.error.missingSweepParameter()
+    def addOutputDev(self, instr_nickname, dev_name):
+        # add a device to the output tree
+        gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_name]
+        if self.view_main.tree_out.findItemByData(gui_dev) != None:
+            self.pop.devAlreadyHere(); return
+        self.view_main.gui_addOutItem(gui_dev)
+    
+    def addLogDev(self, instr_nickname, dev_name):
+        # add a device to the log tree
+        gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_name]
+        if self.view_main.tree_log.findItemByData(gui_dev) != None:
+            self.pop.devAlreadyHere(); return
+        self.view_main.gui_addLogItem(gui_dev)
+    
+    def showSweepConfig(self, gui_dev):
+        # launch the config window for gui_dev sweep device
+        self.view_main.setEnabled(False)
+        # TODO: handle custom gui
+        self.view_main.window_configSweep(gui_dev)
+    
+    def setSweepValues(self, gui_dev, start, stop, npts):
+        # set sweep values for gui_dev and update the gui
+        gui_dev.sweep = [start, stop, npts]
+        self.view_main.gui_updateSweepValues(gui_dev)
+        self.view_main.win_sw_setup.close()
+        self.setEnabled(True)
+    
+    def _prepareFilename(self):
+        filename = self.view_main.filename_edit.text()
+        if filename == '':
+            filename = 'sweep'
+        filename = './temp/' + filename
+        return filename
+
+    def startSweep(self):
+        devs, start, stop, npts = self.view_main.gui_getSweepValues()
+        out = self.view_main.gui_getOutputDevs()
+        
+        # errors
+        if None in start or None in stop or None in npts:
+            self.pop.missingSweepParameter(); return
+        if devs == []:
+            self.pop.noSweepDevice(); return
+        if 0 in npts:
+            self.pop.sweepZeroPoints(); return
+        if out == [] and self.pop.noOutputDevice() == False:
             return
 
+        # start sweep
+        sweep_kwargs = {
+            'dev': devs,
+            'start': start,
+            'stop': stop,
+            'npts': npts,
+            'out': out,
+            'filename': self._prepareFilename(),
+            'extra_conf': self.view_main.gui_getLogDevs(),
+        }
+        self.sweep_kwargs = sweep_kwargs # for debug only
 
-
-        # check everything is fine
-        # TODO is path ok ?
-
-
-        #self.model.startSweep()
-
-
-        
-
-
-class GuiInstrument():
-    # This class is used to manage instruments in the gui.
+        self.sweep_thread.setSweepKwargs(sweep_kwargs)
+        #self.sweep_thread.start()
     
-    def __init__(self, instr_cls, name, address='',
-                 instr=None,
-                 devices={},):
-        # instr_cls is the pyHegel class of the instrument
-        # name is the nick_name of the instrument
-        # address is the address of the instrument
-        # instr is the instance of the instrument if loaded
-        self.instr_cls = instr_cls
-        self.name = name
-        self.address = address
-        self.instr = instr
-        self.devices = devices
+    def onSweepProgress(self, sw_status_obj):
+        # exec after each sweep iteration
+        x, y = sw_status_obj.set_vals
+        o = sw_status_obj.get_vals[0]
+        self.view_display.addXYval(x, y, o)
+    
+    def onSweepError(self, name, message):
+        self.pop.sweepError(name, message)
+    
+    def onSweepFinished(self):
+        print('sweep finished')
+
 
 
 

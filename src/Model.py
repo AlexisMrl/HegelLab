@@ -2,23 +2,26 @@ from pyHegel import commands as c
 from pyHegel import instruments
 
 class Model():
-    # The model is the only one knowing and doing the pyHegel commands
-    # and dealing with the instruments.
+    # The model is the only one doing the pyHegel commands
+    # except for the sweep thread
     
-
-    def loadInstrument(self, cls, addr):
-        return cls(addr)
+    def loadInstrument(self, cls, addr, nickname):
+        instr = cls(addr)
+        instr.header.set(nickname)
+        return instr
 
     def unloadInstrument(self, instr):
         del instr 
 
-    def getDevices(self, instr, *names):
-        # get the pyhegel devices of an instrument by their string names
-        # return a dictionary {name: device}
-        devs = {}
-        for name in names:
-            devs[name] = getattr(instr, name)
-        return devs
+    def getDevice(self, instr, name):
+        dev = getattr(instr, name)
+        return dev
 
     def getValue(self, dev):
         return c.get(dev)
+    
+    def setValue(self, dev, value):
+        c.set(dev, value)
+
+    def startSweep(self, **kwargs):
+        return c.sweep_multi(**kwargs)

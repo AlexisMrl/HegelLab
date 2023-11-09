@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, \
                             QComboBox, QLineEdit, QTreeWidgetItem, \
                             QMessageBox, QAbstractItemView
-
+from src.GuiInstrument import GuiInstrument, GuiDevice
 
 class Rack(QMainWindow):
     def __init__(self, lab):
@@ -16,40 +16,59 @@ class Rack(QMainWindow):
         self.lab = lab
         
         self.tree.setDragDropMode(QAbstractItemView.DragOnly)
+
+        self.win_add = QMainWindow()
     
         # -- Connect signals to slots --
         self.actionAdd.triggered.connect(self.window_loadInstrument)
-        self.actionRemove.triggered.connect(self.window_removeInstrument)
-        self.tree.itemSelectionChanged.connect(self.selectionChanged)
-        self.tree.itemDoubleClicked.connect(self.ask_getValue)
-        self.dev_get_value.clicked.connect(self.ask_getValue)
-
-    def selectionChanged(self):
-        selected = self.tree.selectedItem()
-        # check if selected is a device or an instrument
-        # and update gui
-        if selected is None:
-            return
-        if selected.parent() is None:
-            self.gui_selectInstrument()
-        else:
-            self.gui_selectDevice()
+        #self.actionRemove.triggered.connect(self.window_removeInstrument)
+        #self.actionConfig.triggered.connect(self.onActionConfig)
+        self.tree.itemSelectionChanged.connect(self.onSelectionChanged)
+        self.tree.itemDoubleClicked.connect(self.onDoubleClick)
+        self.dev_get_value.clicked.connect(self.triggerGetValue)
     
-    def getItemFromDevice(self, instr_name, dev_name):
-        # return the item of a device
-        for i in range(self.tree.topLevelItemCount()):
-            item = self.tree.topLevelItem(i)
-            if item.text(0) == instr_name:
-                for j in range(item.childCount()):
-                    dev_item = item.child(j)
-                    if dev_item.text(0) == dev_name:
-                        return dev_item
-        return None
+    def onSelectionChanged(self):
+        data = self.tree.getData(self.tree.selectedItem())
+        if isinstance(data, GuiInstrument):
+            self.selectIsInstrument()
+        elif isinstance(data, GuiDevice):
+            self.selectIsDevice()
+
+    def selectIsInstrument(self):
+        # when an instrument is selected
+        self.actionRemove.setEnabled(True)
+        self.actionConfig.setEnabled(True)
+        self.dev_get_value.setEnabled(False)
+    
+    def selectIsDevice(self):
+        # when a device is selected
+        self.actionRemove.setEnabled(False)
+        self.actionConfig.setEnabled(False)
+        self.dev_get_value.setEnabled(True)
+
+    def onDoubleClick(self, item, _):
+        data = self.tree.getData(item)
+        if isinstance(data, GuiInstrument):
+            pass
+        elif isinstance(data, GuiDevice):
+            self.triggerGetValue()
+    
+    def triggerGetValue(self):
+        # ask the lab for the value of the selected device
+        selected_item = self.tree.selectedItem()
+        gui_dev = self.tree.getData(selected_item)
+        self.lab.getValue(gui_dev)
+        
+    def closeEvent(self, event):
+        self.win_add.close()
+        event.accept()
     
     # -- windows --
     def window_loadInstrument(self):
         # minimal window for loading device
-        self.win_add = QMainWindow(); self.win_add.setWindowTitle('Add instrument')
+        self.win_add.setWindowTitle('Add instrument')
+        self.win_add.resize(350, 100)
+        self.win_add.setWindowIcon(QtGui.QIcon('resources/favicon/favicon.png'))
         wid = QWidget(); self.win_add.setCentralWidget(wid)
         layout = QVBoxLayout(); wid.setLayout(layout)
         
@@ -74,9 +93,9 @@ class Rack(QMainWindow):
 
         # connect signals to slots
         bt_ok.clicked.connect(lambda:
-                              self.lab.loadAndAddInstrument(cb.currentText(),
-                                                            le_name.text(),
-                                                            le_address.text()))
+                              self.lab.loadNewInstrument(cb.currentText(),
+                                                         le_name.text(),
+                                                         le_address.text()))
         bt_cancel.clicked.connect(self.win_add.close)
 
         self.win_add.show()
@@ -94,48 +113,23 @@ class Rack(QMainWindow):
                 self.lab.unloadAndRemoveInstrument(selected_item.text(0))
     # -- end windows --
         
-    # -- gui_: update the gui --
-    def gui_selectInstrument(self):
-        # when an instrument is selected
-        self.actionRemove.setEnabled(True)
-        self.actionConfig.setEnabled(True)
-        self.dev_get_value.setEnabled(False)
-    
-    def gui_selectDevice(self):
-        # when a device is selected
-        self.actionRemove.setEnabled(False)
-        self.actionConfig.setEnabled(False)
-        self.dev_get_value.setEnabled(True)
-
+    # -- gui_: update the gui -- (called by the lab)
     def gui_addGuiInstrument(self, gui_instr):
         # add an instrument item to self.tree:
-        item = QTreeWidgetItem(self.tree)
+        item = QTreeWidgetItem()
+        self.tree.setData(item, gui_instr)
         item.setFlags(item.flags() & ~Qt.ItemIsDragEnabled)
-        item.setText(0, gui_instr.name)
+        item.setText(0, gui_instr.nickname)
         item.setText(2, gui_instr.address)
         item.setText(3, gui_instr.instr_cls.__name__)
-        for name, dev in gui_instr.devices.items():
+        for gui_dev in gui_instr.gui_devices.values():
             dev_item = QTreeWidgetItem(item)
-            dev_item.setText(0, name)
+            self.tree.setData(dev_item, gui_dev)
+            dev_item.setText(0, gui_dev.name)
+        self.tree.addTopLevelItem(item)
     
-    def gui_removeInstrument(self):
-        self.removeSelected()
-    
-    def gui_updateDeviceValue(self, nickname, dev_name, value):
-        # find the device item
-        dev_item = self.getItemFromDevice(nickname, dev_name)
-        if dev_item is None: return
-        # update the value
+    def gui_updateDeviceValue(self, gui_dev, value):
+        # update the value of the item corresponding to gui_dev
+        dev_item = self.tree.findItemByData(gui_dev)
         dev_item.setText(1, str(value))
     # -- end gui_ --
-    
-    # -- ask_: ask the lab to do something --
-    def ask_getValue(self):
-        # get value of the selected item
-        # only if it is a device
-        selected = self.tree.selectedItem()
-        if selected is None: return
-        if selected.parent() is not None:
-            self.lab.getValueAndUpdateRack(selected.parent().text(0),
-                                          selected.text(0))
-
