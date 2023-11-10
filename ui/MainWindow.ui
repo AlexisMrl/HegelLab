@@ -16,7 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
     <item row="0" column="2">
-     <widget class="QGroupBox" name="groupBox_2">
+     <widget class="QGroupBox" name="gb_out">
       <property name="title">
        <string>Out</string>
       </property>
@@ -61,7 +61,7 @@
      </widget>
     </item>
     <item row="1" column="2">
-     <widget class="QGroupBox" name="groupBox_3">
+     <widget class="QGroupBox" name="gb_log">
       <property name="toolTip">
        <string/>
       </property>
@@ -109,7 +109,7 @@
      </widget>
     </item>
     <item row="0" column="1" rowspan="2">
-     <widget class="QGroupBox" name="groupBox">
+     <widget class="QGroupBox" name="gb_sweep">
       <property name="title">
        <string>Sweep</string>
       </property>

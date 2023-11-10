@@ -43,8 +43,8 @@ class Popup():
         return
     
     def devAlreadyHere(self):
-        self._popError(QMessageBox.Warning,
-                      'Warning',
+        self._popError(QMessageBox.Information,
+                      'Information',
                       'This device is already in here')
         return
 
@@ -52,6 +52,13 @@ class Popup():
         self._popErrorWithDetails(QMessageBox.Critical,
                       'Error',
                       'Error while loading instrument: ' + str(exception),
+                      traceback)
+        return
+
+    def devLoadError(self, exception, traceback):
+        self._popErrorWithDetails(QMessageBox.Critical,
+                      'Error',
+                      'Error while loading device: ' + str(exception) + '\nThis device will not be loaded.',
                       traceback)
         return
     
@@ -73,6 +80,10 @@ class Popup():
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         msg.setWindowIcon(QtGui.QIcon('resources/favicon/favicon.png'))
         return msg.exec_() == QMessageBox.Yes
+
+    def askRemoveInstrument(self):
+        return self._popYesNo('Remove instrument',
+                              'Are you sure you want to remove this instrument?')
 
     def noOutputDevice(self):
         return self._popYesNo('No output device',

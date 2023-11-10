@@ -46,11 +46,19 @@ class Tree(QTreeWidget):
                 subitem = item.child(j)
                 if self.getData(subitem) == data:
                     return subitem
+        return None
 
     def removeSelected(self):
         # remove selected item including its parent, brothers and sisters
         selected_index = self.indexOfTopLevelItem(self.selectedItem())
         self.takeTopLevelItem(selected_index)
+
+    def removeByData(self, data):
+        item = self.findItemByData(data)
+        if item is None:
+            return
+        item_index = self.indexOfTopLevelItem(item)
+        self.takeTopLevelItem(item_index)
 
     def mimeTypes(self):
         # define the mime types that can be dragged

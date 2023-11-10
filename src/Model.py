@@ -10,9 +10,6 @@ class Model():
         instr.header.set(nickname)
         return instr
 
-    def unloadInstrument(self, instr):
-        del instr 
-
     def getDevice(self, instr, name):
         dev = getattr(instr, name)
         return dev
@@ -25,3 +22,6 @@ class Model():
 
     def startSweep(self, **kwargs):
         return c.sweep_multi(**kwargs)
+    
+    def initLoopControl(self):
+        return c.Loop_Control()

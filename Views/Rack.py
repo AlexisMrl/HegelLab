@@ -21,11 +21,11 @@ class Rack(QMainWindow):
     
         # -- Connect signals to slots --
         self.actionAdd.triggered.connect(self.window_loadInstrument)
-        #self.actionRemove.triggered.connect(self.window_removeInstrument)
+        self.actionRemove.triggered.connect(self.onRemoveInstrument)
         #self.actionConfig.triggered.connect(self.onActionConfig)
         self.tree.itemSelectionChanged.connect(self.onSelectionChanged)
         self.tree.itemDoubleClicked.connect(self.onDoubleClick)
-        self.dev_get_value.clicked.connect(self.triggerGetValue)
+        self.dev_get_value.clicked.connect(self.onGetValue)
     
     def onSelectionChanged(self):
         data = self.tree.getData(self.tree.selectedItem())
@@ -51,13 +51,18 @@ class Rack(QMainWindow):
         if isinstance(data, GuiInstrument):
             pass
         elif isinstance(data, GuiDevice):
-            self.triggerGetValue()
+            self.onGetValue()
     
-    def triggerGetValue(self):
+    def onGetValue(self):
         # ask the lab for the value of the selected device
         selected_item = self.tree.selectedItem()
         gui_dev = self.tree.getData(selected_item)
         self.lab.getValue(gui_dev)
+    
+    def onRemoveInstrument(self):
+        # get parent selected item:
+        selected_item = self.tree.selectedItem()
+        self.lab.removeGuiInstrument(selected_item.nickname)
         
     def closeEvent(self, event):
         self.win_add.close()
@@ -100,17 +105,7 @@ class Rack(QMainWindow):
 
         self.win_add.show()
 
-    def window_removeInstrument(self):
-        # msgbox to confirm the removal
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Question)
-        msg.setText("Are you sure you want to remove this instrument?")
-        msg.setWindowTitle("Remove instrument")
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        if msg.exec_() == QMessageBox.Yes:
-            selected_item = self.tree.selectedItem()
-            if selected_item is not None:
-                self.lab.unloadAndRemoveInstrument(selected_item.text(0))
+
     # -- end windows --
         
     # -- gui_: update the gui -- (called by the lab)
@@ -122,11 +117,18 @@ class Rack(QMainWindow):
         item.setText(0, gui_instr.nickname)
         item.setText(2, gui_instr.address)
         item.setText(3, gui_instr.instr_cls.__name__)
+        item.setText(4, {True: 'Loaded', False: 'Not loaded'}[gui_instr.ph_instr is not None])
         for gui_dev in gui_instr.gui_devices.values():
             dev_item = QTreeWidgetItem(item)
             self.tree.setData(dev_item, gui_dev)
             dev_item.setText(0, gui_dev.name)
+            dev_item.setText(4, {True: '', False: 'Not found'}[gui_dev.ph_dev is not None])
         self.tree.addTopLevelItem(item)
+    
+    def gui_removeGuiInstrument(self, gui_instr):
+        # remove the instrument item from self.tree:
+        item = self.tree.findItemByData(gui_instr)
+        self.tree.takeTopLevelItem(self.tree.indexOfTopLevelItem(item))
     
     def gui_updateDeviceValue(self, gui_dev, value):
         # update the value of the item corresponding to gui_dev

@@ -18,6 +18,20 @@ class Main(QMainWindow):
         self.filename_edit.setPlaceholderText('filename')
         self.filename_edit.setFixedWidth(200)
         self.toolBar.addWidget(self.filename_edit)
+        # add disabled stop, abort buttons:
+        self.pause_button = QPushButton('Pause')
+        self.pause_button.setObjectName('pause_button')
+        self.pause_button.setEnabled(False)
+        self.toolBar.addWidget(self.pause_button)
+        self.abort_button = QPushButton('Abort')
+        self.abort_button.setObjectName('abort_button')
+        self.abort_button.setEnabled(False)
+        self.toolBar.addWidget(self.abort_button)
+        # add label for sweep status to status bar
+        self.statusBar().addWidget(QLabel('Sweep status: '))
+        self.sweep_status = QLabel('Ready')
+        self.sweep_status.setObjectName('sweep_status')
+        self.statusBar().addWidget(self.sweep_status)
         # -- end ui setup --
         self.lab = lab
         self.tree_sw.dropMimeData = lambda parent, row, data, action: \
@@ -43,7 +57,9 @@ class Main(QMainWindow):
         self.tree_sw.itemDoubleClicked.connect(self.triggerShowSweepConfig)
         
         # sweep:
-        self.actionStartSweep.triggered.connect(self.onStartSweep)
+        self.actionStartSweep.triggered.connect(self.triggerStartSweep)
+        self.pause_button.clicked.connect(self.lab.pauseSweep)
+        self.abort_button.clicked.connect(self.lab.abortSweep)
 
     def onDrop(self, tree, parent, row, data, action):
         # what happens when the item is dropped
@@ -76,7 +92,8 @@ class Main(QMainWindow):
         gui_dev = self.tree_sw.getData(selected)
         self.lab.showSweepConfig(gui_dev)
     
-    def onStartSweep(self):
+    def triggerStartSweep(self):
+        # ask the lab to start the sweep
         self.lab.startSweep()
     
     def closeEvent(self, event):
@@ -161,29 +178,50 @@ class Main(QMainWindow):
         dev_item.setText(1, str(gui_dev.sweep[2]))
         dev_item.setText(2, str(gui_dev.sweep[:2]))
     
-    def gui_getSweepValues(self):
+    def gui_getSweepGuiDevs(self):
         # go through self.tree_sw and return devs, start, stop, npts
-        devs, start, stop, npts = [], [], [], []
-        for item in self.tree_sw:
-            gui_dev = self.tree_sw.getData(item)
-            devs.append(gui_dev.ph_dev)
-            start.append(gui_dev.sweep[0])
-            stop.append(gui_dev.sweep[1])
-            npts.append(gui_dev.sweep[2])
-        return devs, start, stop, npts
+        return [self.tree_sw.getData(item) for item in self.tree_sw]
     
-    def gui_getOutputDevs(self):
-        devs = []
-        for item in self.tree_out:
-            gui_dev = self.tree_out.getData(item)
-            devs.append(gui_dev.ph_dev)
-        return devs
+    def gui_getOutputGuiDevs(self):
+        return [self.tree_out.getData(item) for item in self.tree_out]
     
-    def gui_getLogDevs(self):
-        devs = []
-        for item in self.tree_log:
-            gui_dev = self.tree_log.getData(item)
-            devs.append(gui_dev.ph_dev)
-        return devs
+    def gui_getLogGuiDevs(self):
+        return [self.tree_log.getData(item) for item in self.tree_log]
+
+    def gui_sweepStarted(self):
+        self.pause_button.setEnabled(True)
+        self.abort_button.setEnabled(True)
+        self.actionStartSweep.setEnabled(False)
+        self.gb_sweep.setEnabled(False)
+        self.gb_out.setEnabled(False)
+        self.gb_log.setEnabled(False)
+    
+    def gui_sweepFinished(self):
+        self.pause_button.setEnabled(False)
+        self.abort_button.setEnabled(False)
+        self.actionStartSweep.setEnabled(True)
+        self.gb_sweep.setEnabled(True)
+        self.gb_out.setEnabled(True)
+        self.gb_log.setEnabled(True)
+        # Reset pause button (in case of Pause->Abort):
+        if self.pause_button.text() == 'Resume':
+            self.gui_sweepResumed()
+    
+    def gui_sweepPaused(self):
+        self.pause_button.setText('Resume')
+        self.pause_button.clicked.disconnect()
+        self.pause_button.clicked.connect(self.lab.resumeSweep)
+    
+    def gui_sweepResumed(self):
+        self.pause_button.setText('Pause')
+        self.pause_button.clicked.disconnect()
+        self.pause_button.clicked.connect(self.lab.pauseSweep)
+        
+    def gui_removeDevice(self, gui_dev):
+        # remove the device from the trees
+        self.tree_sw.removeByData(gui_dev)
+        self.tree_out.removeByData(gui_dev)
+        self.tree_log.removeByData(gui_dev)
+        
     # -- end gui --
 
