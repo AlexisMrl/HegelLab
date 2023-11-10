@@ -25,15 +25,6 @@ class LoaderSaver():
         with open(path, 'rb') as f:
             to_load = pickle.load(f) # {nickname: gui_instr}
 
-
         # restore ph_instr and ph_dev
         for gui_instr in to_load.values():
-            gui_instr.nickname = self.lab.checkInstrLoadingName(gui_instr.nickname)
-            ph_instr = self.lab.tryLoadPhInstr(gui_instr)
-            gui_instr.ph_instr = ph_instr
-
-            for gui_dev in gui_instr.gui_devices.values():
-                ph_dev = self.lab.tryGetPhDev(gui_instr, gui_dev.name)
-                gui_dev.ph_dev = ph_dev
-        
-            self.lab.afterLoadInstrument(gui_instr)
+            self.lab.loadGuiInstrument(gui_instr)

@@ -25,3 +25,10 @@ class Model():
     
     def initLoopControl(self):
         return c.Loop_Control()
+    
+    def devType(self, dev):
+        # check the type of a device:
+        # set, get or set/get:
+        settable = True if dev._setdev_p is not None else False
+        gettable = True if dev._getdev_p is not None else False
+        return (settable, gettable)

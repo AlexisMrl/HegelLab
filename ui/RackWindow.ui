@@ -45,7 +45,44 @@
      </widget>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
+     <layout class="QHBoxLayout" name="hbox_device">
+      <item>
+       <widget class="QPushButton" name="dev_get_value">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Get value</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="dev_set_value">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Set value</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Line" name="line">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="dev_wrap_device">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Wrap device</string>
+        </property>
+       </widget>
+      </item>
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
@@ -58,16 +95,6 @@
          </size>
         </property>
        </spacer>
-      </item>
-      <item>
-       <widget class="QPushButton" name="dev_get_value">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="text">
-         <string>Get value</string>
-        </property>
-       </widget>
       </item>
      </layout>
     </item>
@@ -98,6 +125,8 @@
    <addaction name="separator"/>
    <addaction name="actionAdd"/>
    <addaction name="actionRemove"/>
+   <addaction name="separator"/>
+   <addaction name="actionSaveRack"/>
   </widget>
   <action name="actionAdd">
    <property name="checkable">
@@ -139,6 +168,11 @@
    </property>
    <property name="text">
     <string>Config</string>
+   </property>
+  </action>
+  <action name="actionSaveRack">
+   <property name="text">
+    <string>Save rack</string>
    </property>
   </action>
  </widget>

@@ -81,9 +81,9 @@ class Popup():
         msg.setWindowIcon(QtGui.QIcon('resources/favicon/favicon.png'))
         return msg.exec_() == QMessageBox.Yes
 
-    def askRemoveInstrument(self):
-        return self._popYesNo('Remove instrument',
-                              'Are you sure you want to remove this instrument?')
+    def askRemoveInstrument(self, nickname):
+        msg = 'Are you sure you want to remove ' + nickname + '?'
+        return self._popYesNo('Remove instrument', msg)
 
     def noOutputDevice(self):
         return self._popYesNo('No output device',
@@ -92,3 +92,11 @@ class Popup():
     def askQuit(self):
         return self._popYesNo('Quit',
                               'Are you sure you want to quit?')
+
+    def notSettable(self):
+        return self._popYesNo('Not settable',
+                              'This device is not settable. Try sweeping it anyway?')
+    
+    def notGettable(self):
+        return self._popYesNo('Not gettable',
+                              'This device is not gettable. Try as output device anyway?')

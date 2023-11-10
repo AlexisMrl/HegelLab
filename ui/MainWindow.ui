@@ -202,6 +202,9 @@
    <property name="text">
     <string>Instruments</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+I</string>
+   </property>
   </action>
   <action name="actionDisplay">
    <property name="icon">
@@ -210,6 +213,9 @@
    </property>
    <property name="text">
     <string>Display</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+D</string>
    </property>
   </action>
   <action name="actionStartSweep">

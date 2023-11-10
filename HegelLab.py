@@ -6,6 +6,7 @@ from views import Main, Rack, Display
 from src import LoaderSaver, Model, Popup, SweepThread
 from src.GuiInstrument import GuiInstrument, GuiDevice
 
+
 # HegelLab is made to support any instrument with minimal effort.
 # It should be enough to add the instrument class to the dictionary below.
 # TODO: use json file
@@ -34,26 +35,23 @@ class HegelLab():
     def __init__(self):
         # app
         self.loader = LoaderSaver.LoaderSaver(self)
+        self.pop = Popup.Popup()
         # model, views
         self.model = Model.Model()
         self.view_main = Main.Main(self)
         self.view_rack = Rack.Rack(self)
         self.view_display = Display.Display(self)
         
-        # popups
-        self.pop = Popup.Popup()
-        
         # data
         self.supported_instruments = supported_instruments
         self.gui_instruments = {} # {nickname: GuiInstrument}
 
-        # sweep
+        # sweep related
         self.loop_control = self.model.initLoopControl()
         self.sweep_thread = SweepThread.SweepThread(self.model.startSweep, self.loop_control)
         self.sweep_thread.progress_signal.connect(self.onSweepSignalProgress)
         self.sweep_thread.error_signal.connect(self.onSweepSignalError)
         self.sweep_thread.finished_signal.connect(self.onSweepSignalFinished)
-
 
         # show main window
         self.showMain()
@@ -105,18 +103,6 @@ class HegelLab():
             i += 1
         return name
 
-    def buildDevDisplayName(self, instr_name, dev_name):
-        # build the display name of a device
-        return instr_name + ' - ' + dev_name
-
-    def buildGuiInstrument(self, nickname, instr_name, instr_cls, address):
-        # instantiate a GuiInstrument
-        if nickname == '':
-            nickname = instr_name
-        nickname = self.checkInstrLoadingName(nickname)
-        gui_instr = GuiInstrument(nickname, instr_name, instr_cls, address)
-        return gui_instr
-
     def tryLoadPhInstr(self, gui_instr):
         # try load in pyHegel
         try:
@@ -130,30 +116,6 @@ class HegelLab():
             return None
         return ph_instr
 
-    def loadNewInstrument(self, instr_name, nickname, address):
-        # this function calls a bunch of other functions in order to load an instrument
-        # it is made that way we can also load an instrument from a file
-        # (the loading process does not call this function but the other functions directly)
-
-        # build GuiInstrument
-        instr_cls = supported_instruments[instr_name]['pyhegel_class']
-        gui_instr = self.buildGuiInstrument(nickname, instr_name, instr_cls, address)
-        gui_instr.ph_instr = self.tryLoadPhInstr(gui_instr)
-        if gui_instr.ph_instr is not None:
-            self.fillGuiInstrument(gui_instr)
-        
-        self.afterLoadInstrument(gui_instr)
-
-    def afterLoadInstrument(self, gui_instr):
-        # add to lab and update gui
-        self.gui_instruments[gui_instr.nickname] = gui_instr
-        self.view_rack.gui_addGuiInstrument(gui_instr)
-        self.view_rack.win_add.close()
-
-    def buildGuiDevice(self, display_name, name, ph_dev, parent=None):
-        gui_dev = GuiDevice(display_name, name, ph_dev, parent)
-        return gui_dev
-    
     def tryGetPhDev(self, gui_instr, dev_name):
         if gui_instr.ph_instr is None:
             return None
@@ -166,28 +128,40 @@ class HegelLab():
             return None
         return ph_dev
 
-    def fillGuiInstrument(self, gui_instr):
-        # fill the GuiInstrument with GuiDevices
-        instr_devices = []
-        for dev_name in supported_instruments[gui_instr.instr_name]['devices_name']:
-            ph_dev = self.tryGetPhDev(gui_instr, dev_name)
-            if ph_dev is None:
-                continue
-            display_name = self.buildDevDisplayName(gui_instr.nickname, dev_name)
-            gui_dev = self.buildGuiDevice(display_name, dev_name, ph_dev, gui_instr)
+    def loadGuiInstrument(self, gui_instr):
+        # load a GuiInstrument:
+        # - make sure the nickname is unique
+        nickname = self.checkInstrLoadingName(gui_instr.nickname)
+        gui_instr.nickname = nickname
+        # - load the pyHegel instrument
+        gui_instr.ph_instr = self.tryLoadPhInstr(gui_instr)
+        # - load the pyHegel devices
+        for gui_dev in gui_instr.gui_devices.values():
+            gui_dev.ph_dev = self.tryGetPhDev(gui_instr, gui_dev.name)
+            gui_dev.type = self.model.devType(gui_dev.ph_dev)
+        # - add it to the lab
+        self.gui_instruments[gui_instr.nickname] = gui_instr
+        self.view_rack.gui_addGuiInstrument(gui_instr)
+        self.view_rack.win_add.close()
+    
+    def buildGuiInstrument(self, nickname, instr_name, instr_cls, address):
+        # call only by the Rack. Loading is done in loadGuiInstrument.
+        if nickname == '': nickname = instr_name
+        gui_instr = GuiInstrument(nickname, instr_name, instr_cls, address)
+        for dev_name in supported_instruments[instr_name]['devices_name']:
+            dev_display_name = instr_name + ' - ' + dev_name
+            gui_dev = GuiDevice(dev_display_name, dev_name, gui_instr)
             gui_instr.gui_devices[dev_name] = gui_dev
-        
-    def removeGuiInstrument(self, gui_instr_nickname):
+        self.loadGuiInstrument(gui_instr)
+
+    def removeGuiInstrument(self, gui_instr):
         if self.pop.askRemoveInstrument(gui_instr.nickname) == False:
             return
-        gui_instr = self.gui_instruments[gui_instr_nickname]
         # remove its devices in the trees:
         for dev in gui_instr.gui_devices.values():
             self.view_main.gui_removeDevice(dev)
         self.view_rack.gui_removeGuiInstrument(gui_instr)
-        del self.gui_instruments[gui_instr_nickname]
-        
-
+        del self.gui_instruments[gui_instr.nickname]
             
     def getValue(self, gui_dev):
         # get the value of the GuiDevice and update the gui
@@ -200,6 +174,9 @@ class HegelLab():
     def addSweepDev(self, instr_nickname, dev_name):
         # add a device to the sweep tree, launch the config window
         gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_name]
+        if gui_dev.type[0] == False and self.pop.notSettable() == False:
+            # if the device is not gettable, ask if we want to add it anyway
+            return
         if self.view_main.tree_sw.findItemByData(gui_dev) != None:
             self.pop.devAlreadyHere(); return
         self.view_main.gui_addSweepGuiDev(gui_dev)
@@ -208,6 +185,8 @@ class HegelLab():
     def addOutputDev(self, instr_nickname, dev_name):
         # add a device to the output tree
         gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_name]
+        if gui_dev.type[1] == False and self.pop.notGettable() == False:
+            return
         if self.view_main.tree_out.findItemByData(gui_dev) != None:
             self.pop.devAlreadyHere(); return
         self.view_main.gui_addOutItem(gui_dev)
@@ -306,32 +285,21 @@ class HegelLab():
 
         # run sweep thread
         self.sweep_thread.initSweepKwargs(sweep_kwargs)
-        self.sweep_thread.initSweepStatus(gui_sw_devs, gui_out_devs)
+        self.sweep_thread.initCurrentSweep(gui_sw_devs, gui_out_devs, time.time())
         self.sweep_thread.start()
-        self.data = []
         
         # update gui
         self.view_main.gui_sweepStarted()
-        self.view_display.onStartSweep(gui_sw_devs, gui_out_devs)
+        self.view_display.gui_sweepStarted(self.sweep_thread.current_sweep)
         self.showDisplay()
 
-    def onSweepSignalProgress(self, sweep_status):
+    def onSweepSignalProgress(self, current_sweep):
         # called by the sweep thread
         # sweep_status is a SweepStatusObject
 
-        i = sweep_status.iteration[0]-1
-        # retreive sweep values
-        for dev, val in zip(sweep_status.sw_devs, sweep_status.sw_devs_vals):
-            dev.values[i] = val
-            print (dev.name, dev.values[i])
-        # retreive output values
-        for dev, val in zip(sweep_status.out_devs, sweep_status.out_devs_vals):
-            dev.values[i] = val
-            print (dev.name, dev.values[i])
-
-        self.data.append(sweep_status.datas) # for debug
-        # update display
-        self.view_display.onIteration()
+        # update display and status
+        self.view_display.gui_onIteration(current_sweep)
+        self.view_main.gui_sweepStatus(current_sweep)
 
     def onSweepSignalError(self, name, message):
         # called by the sweep thread
@@ -339,7 +307,6 @@ class HegelLab():
     
     def onSweepSignalFinished(self):
         # called by the sweep thread
-        print('sweep finished')
         self.view_main.gui_sweepFinished()
 
     def pauseSweep(self):
@@ -350,6 +317,7 @@ class HegelLab():
     def resumeSweep(self):
         # called by the main window
         self.loop_control.pause_enabled = False
+        self.sweep_thread.resetStartTime(time.time())
         self.view_main.gui_sweepResumed()
     
     def abortSweep(self):

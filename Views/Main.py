@@ -1,3 +1,4 @@
+import time
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, \
                             QLineEdit, QTreeWidgetItem, QGridLayout, \
                             QSpinBox, QLabel, QPushButton
@@ -20,18 +21,22 @@ class Main(QMainWindow):
         self.toolBar.addWidget(self.filename_edit)
         # add disabled stop, abort buttons:
         self.pause_button = QPushButton('Pause')
-        self.pause_button.setObjectName('pause_button')
         self.pause_button.setEnabled(False)
         self.toolBar.addWidget(self.pause_button)
         self.abort_button = QPushButton('Abort')
-        self.abort_button.setObjectName('abort_button')
         self.abort_button.setEnabled(False)
         self.toolBar.addWidget(self.abort_button)
         # add label for sweep status to status bar
         self.statusBar().addWidget(QLabel('Sweep status: '))
         self.sweep_status = QLabel('Ready')
-        self.sweep_status.setObjectName('sweep_status')
         self.statusBar().addWidget(self.sweep_status)
+        self.sweep_iteration = QLabel()
+        self.statusBar().addWidget(self.sweep_iteration)
+        self.sweep_estimation = QLabel()
+        self.statusBar().addWidget(self.sweep_estimation)
+        # width for first column for tree:
+        self.tree_sw.setColumnWidth(0, 200)
+        
         # -- end ui setup --
         self.lab = lab
         self.tree_sw.dropMimeData = lambda parent, row, data, action: \
@@ -195,6 +200,7 @@ class Main(QMainWindow):
         self.gb_sweep.setEnabled(False)
         self.gb_out.setEnabled(False)
         self.gb_log.setEnabled(False)
+        self.sweep_status.setText('Running')
     
     def gui_sweepFinished(self):
         self.pause_button.setEnabled(False)
@@ -206,22 +212,49 @@ class Main(QMainWindow):
         # Reset pause button (in case of Pause->Abort):
         if self.pause_button.text() == 'Resume':
             self.gui_sweepResumed()
+        self.sweep_status.setText('Ready')
+        self.sweep_iteration.setText('')
+        self.sweep_estimation.setText('')
     
     def gui_sweepPaused(self):
         self.pause_button.setText('Resume')
         self.pause_button.clicked.disconnect()
         self.pause_button.clicked.connect(self.lab.resumeSweep)
+        self.sweep_status.setText('Paused')
     
     def gui_sweepResumed(self):
         self.pause_button.setText('Pause')
         self.pause_button.clicked.disconnect()
         self.pause_button.clicked.connect(self.lab.pauseSweep)
+        self.sweep_status.setText('Running')
         
     def gui_removeDevice(self, gui_dev):
         # remove the device from the trees
         self.tree_sw.removeByData(gui_dev)
         self.tree_out.removeByData(gui_dev)
         self.tree_log.removeByData(gui_dev)
+    
+    def _gui_progress(self, current_pts, total_pts):
+        # i/n
+        self.sweep_iteration.setText(f'{current_pts}/{total_pts}')
+    
+    def _gui_eta(self, start_time, current_pts, total_pts):
+        # display it as h:m:s:
+        elapsed = time.time() - start_time
+        remaining = elapsed * (total_pts - current_pts) / current_pts
+
+        h = remaining // 3600
+        m = (remaining % 3600) // 60
+        s = remaining % 60
+        self.sweep_estimation.setText(f'ETA: {h:.0f}:{m:02.0f}:{s:02.0f}')
+    
+    def gui_sweepStatus(self, current_sweep):
+        # update the sweep status bar
+        self._gui_progress(current_sweep.iteration[0], current_sweep.iteration[1])
+        self._gui_eta(current_sweep.start_time,
+                     current_sweep.iteration[0],
+                     current_sweep.iteration[1])
+        
         
     # -- end gui --
 

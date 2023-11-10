@@ -1,20 +1,16 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 import traceback
 
-class SweepStatusObject():
-    # class to pass sweep status
+class CurrentSweep():
     def __init__(self):
+        self.start_time = None # time.time() at the beginning of the sweep
         self.iteration = [None, None] # i out of n
-        self.time = None # epoch
         self.sw_devs = None # list of swept gui_devs
-        self.sw_devs_vals = None
         self.out_devs = None # list of out gui_devs
-        self.out_devs_vals = None
-
-        self.datas = None # dict of all datas, for debug
-
+        self.datas = None # full dict of datas from the sweep
+    
 class SweepThread(QThread):
-    progress_signal = pyqtSignal(SweepStatusObject) # (SweepStatusObject)
+    progress_signal = pyqtSignal(CurrentSweep) # (CurrentSweep)
     error_signal = pyqtSignal(str, str) # (Exception)
     finished_signal = pyqtSignal()
     
@@ -22,13 +18,12 @@ class SweepThread(QThread):
     # runs the sweep and calls 'after_get' every point
     # sending a SweepStatusObject to the main thread.
 
-
     def __init__(self, sweep_multi_fn, loop_control):
         super(SweepThread, self).__init__()
         self.sweep_multi_fn = sweep_multi_fn
         self.loop_control = loop_control
 
-        self.sweep_status = SweepStatusObject()
+        self.current_sweep = CurrentSweep()
     
     def initSweepKwargs(self, sweep_multi_kwargs):
         self.fn_kwargs = sweep_multi_kwargs
@@ -36,9 +31,10 @@ class SweepThread(QThread):
         self.fn_kwargs["exec_after"] = self.after_get
         self.fn_kwargs["graph"] = False
         
-    def initSweepStatus(self, gui_sw_devs, gui_out_devs):
-        self.sweep_status.sw_devs = gui_sw_devs
-        self.sweep_status.out_devs = gui_out_devs
+    def initCurrentSweep(self, gui_sw_devs, gui_out_devs, start_time):
+        self.current_sweep.sw_devs = gui_sw_devs
+        self.current_sweep.out_devs = gui_out_devs
+        self.current_sweep.start_time = start_time
     
     def run(self):
         try:
@@ -53,14 +49,24 @@ class SweepThread(QThread):
         # exec between set and get
         # datas is a dict detailed in pyHegel.commands._Sweep
 
-        # update self.sweep_status
-        self.sweep_status.sw_devs_vals = datas["ask_vals"]
-        self.sweep_status.out_devs_vals = datas["read_vals"]
-        self.sweep_status.time = datas["saved_vals"][-1]
-        self.sweep_status.iteration[0] = datas["iter_part"]
-        self.sweep_status.iteration[1] = datas["iter_total"] # no need, but for consistency 
-        self.sweep_status.datas = datas
+        self.current_sweep.iteration[0] = datas["iter_part"]
+        self.current_sweep.iteration[1] = datas["iter_total"] # no need, but for consistency 
+        self.current_sweep.datas = datas
+        
+        # this used to be done in the main thread,
+        # but it led to a bug where it sometimes
+        # missed some points
+        i = datas["iter_part"]-1
+        for out_dev, val in zip(self.current_sweep.out_devs,
+                                datas["read_vals"]):
+            out_dev.values[i] = val
+
+        for sw_dev, val in zip(self.current_sweep.sw_devs,
+                               datas["ask_vals"]):
+            sw_dev.values[i] = val
 
         # emit self.progress
-        self.progress_signal.emit(self.sweep_status)
-        print(self.loop_control.abort_completed)
+        self.progress_signal.emit(self.current_sweep)
+    
+    def resetStartTime(self, time):
+        self.current_sweep.start_time = time
