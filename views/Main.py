@@ -35,7 +35,7 @@ class Main(QMainWindow):
         self.sweep_estimation = QLabel()
         self.statusBar().addWidget(self.sweep_estimation)
         # width for first column for tree:
-        self.tree_sw.setColumnWidth(0, 200)
+        self.tree_sw.setColumnWidth(0, 175)
         
         # -- end ui setup --
         self.lab = lab
@@ -69,14 +69,14 @@ class Main(QMainWindow):
     def onDrop(self, tree, parent, row, data, action):
         # what happens when the item is dropped
         # extract data:
-        instr_name = str(data.data('instrument-name'), 'utf-8')
-        dev_name = str(data.data('device-name'), 'utf-8')
+        instr_nickname = str(data.data('instrument-nickname'), 'utf-8')
+        dev_nickname = str(data.data('device-nickname'), 'utf-8')
         if tree == self.tree_sw:
-            self.lab.addSweepDev(instr_name, dev_name)
+            self.lab.addSweepDev(instr_nickname, dev_nickname)
         elif tree == self.tree_out:
-            self.lab.addOutputDev(instr_name, dev_name)
+            self.lab.addOutputDev(instr_nickname, dev_nickname)
         elif tree == self.tree_log:
-            self.lab.addLogDev(instr_name, dev_name)
+            self.lab.addLogDev(instr_nickname, dev_nickname)
         return True
     
     def onSweepSelectionChanged(self):
@@ -110,7 +110,7 @@ class Main(QMainWindow):
     # -- windows --
     def window_configSweep(self, gui_dev):
         # minimal window for defining sweep start, stop, step:
-        display_name = gui_dev.display_name
+        display_name = gui_dev.getDisplayName('long', full=True)
         self.win_sw_setup.setWindowTitle('Setup sweep ' + display_name)
         self.win_sw_setup.setWindowIcon(QtGui.QIcon('resources/favicon/favicon.png'))
         wid = QWidget(); self.win_sw_setup.setCentralWidget(wid)
@@ -161,7 +161,7 @@ class Main(QMainWindow):
     def _gui_makeItem(self, tree, gui_dev):
         item = QTreeWidgetItem()
         item.setChildIndicatorPolicy(QTreeWidgetItem.DontShowIndicatorWhenChildless)
-        item.setText(0, gui_dev.display_name)
+        item.setText(0, gui_dev.getDisplayName('long', full=True))
         tree.setData(item, gui_dev)
         tree.addTopLevelItem(item)
         
@@ -176,6 +176,17 @@ class Main(QMainWindow):
     def gui_addLogItem(self, gui_dev):
         # add item to the log tree:
         self._gui_makeItem(self.tree_log, gui_dev)
+    
+    def gui_renameDevice(self, gui_dev):
+        item = self.tree_sw.findItemByData(gui_dev)
+        if item is not None:
+            item.setText(0, gui_dev.getDisplayName('long', full=True))
+        item = self.tree_out.findItemByData(gui_dev)
+        if item is not None:
+            item.setText(0, gui_dev.getDisplayName('long', full=True))
+        item = self.tree_log.findItemByData(gui_dev)
+        if item is not None:
+            item.setText(0, gui_dev.getDisplayName('long', full=True))
     
     def gui_updateSweepValues(self, gui_dev):
         # set sweep values to self.tree_sw.selectedItem()

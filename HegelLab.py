@@ -6,6 +6,9 @@ from views import Main, Rack, Display
 from src import LoaderSaver, Model, Popup, SweepThread
 from src.GuiInstrument import GuiInstrument, GuiDevice
 
+import numpy as np
+import time
+
 
 # HegelLab is made to support any instrument with minimal effort.
 # It should be enough to add the instrument class to the dictionary below.
@@ -15,18 +18,55 @@ supported_instruments = {
     "dummy": {
         "pyhegel_class": instruments.dummy,
         "has_address": False,
-        "has_port": False,
+        "has_slots": False,
+        "has_channels": False,
         "has_sweep_gui": False,
         "has_config_gui": False,
         "devices_name": ["rand", "volt", "current"]
     },
     "zurich": {
         "pyhegel_class": instruments.zurich_UHF,
-        "has_address": True,
-        "has_port": False,
+        "has_address": True, "address": 'TCPIP::localhost::',
+        "has_slots": False,
+        "has_channels": False,
         "has_sweep_gui": False,
         "has_config_gui": False,
         "devices_name": []
+    },
+    "be214x": {
+        "pyhegel_class": instruments.iTest_be214x,
+        "has_address": True, "address":"TCPIP::192.168.150.145::5025::SOCKET",
+        "has_slots": True, "slots": [1, 2, 3, 4], # 4 instruments in one
+        "has_channels": True, "channels": [1, 2, 3, 4], # 4 channel per instr
+        "channel_key": "ch",
+        "has_sweep_gui": False,
+        "has_config_gui": False,
+        "devices_name": ["output_en", "range", "slope", "ramp", "level", "meas_out_volt", "meas_out_current"]
+    },
+    "dmm344xxA": {
+        "pyhegel_class": instruments.agilent_multi_34410A,
+        "has_address": True, "address":'TCPIP::K-34465A-15472.mshome.net::inst0::INSTR',
+        "has_slots": False,
+        "has_channels": False,
+        "has_sweep_gui": False,
+        "has_config_gui": False,
+        "devices_name": ["readval", "nplc"]
+    },
+        
+}
+
+supported_devices = {
+    "Limit device": {
+        "pyhegel_class": instruments.LimitDevice,
+        "args": ["Min: ", "Max: "], # (in the right order)
+    },
+    "Scaling device": {
+        "pyhegel_class": instruments.ScalingDevice,
+        "args": ["Scale factor: ", "Offset: "],
+    },
+    "Ramp device": {
+        "pyhegel_class": instruments.RampDevice,
+        "args": ["Rate: ", "Interval: "],
     },
 }
 
@@ -44,6 +84,7 @@ class HegelLab():
         
         # data
         self.supported_instruments = supported_instruments
+        self.supported_devices = supported_devices
         self.gui_instruments = {} # {nickname: GuiInstrument}
 
         # sweep related
@@ -89,69 +130,78 @@ class HegelLab():
         # launch the config window for the selected device
         #self.view_rack.setEnabled(False)
         #self.view_rack.window_configDevice(gui_dev)
-        print(gui_dev.name)
+        print(gui_dev.nickname)
 
 
     # -- RACK --
 
     def checkInstrLoadingName(self, name):
         # check if the loading name is already used
-        i = 1
-        base = name
+        i, base = 1, name
         while name in self.gui_instruments.keys():
             name = base + ' ({})'.format(i)
             i += 1
         return name
-
-    def tryLoadPhInstr(self, gui_instr):
-        # try load in pyHegel
-        try:
-            ph_instr = self.model.loadInstrument(gui_instr.instr_cls,
-                                                 gui_instr.address,
-                                                 gui_instr.nickname)
-        except Exception as e:
-            # get traceback for the messagebox:
-            tb_str = ''.join(traceback.format_tb(e.__traceback__))
-            self.pop.instrLoadError(e, tb_str)
-            return None
-        return ph_instr
-
-    def tryGetPhDev(self, gui_instr, dev_name):
-        if gui_instr.ph_instr is None:
-            return None
-        try:
-            ph_dev = self.model.getDevice(gui_instr.ph_instr, dev_name)
-        except Exception as e:
-            # get traceback for the messagebox:
-            tb_str = ''.join(traceback.format_tb(e.__traceback__))
-            self.pop.devLoadError(e, tb_str)
-            return None
-        return ph_dev
+    
+    def checkDevLoadingName(self, name, gui_instr):
+        # check if the loading name is already used
+        i, base = 1, name
+        while name in gui_instr.gui_devices.keys():
+            name = base + ' ({})'.format(i)
+            i += 1
+        return name
 
     def loadGuiInstrument(self, gui_instr):
         # load a GuiInstrument:
         # - make sure the nickname is unique
-        nickname = self.checkInstrLoadingName(gui_instr.nickname)
-        gui_instr.nickname = nickname
-        # - load the pyHegel instrument
-        gui_instr.ph_instr = self.tryLoadPhInstr(gui_instr)
-        # - load the pyHegel devices
-        for gui_dev in gui_instr.gui_devices.values():
-            gui_dev.ph_dev = self.tryGetPhDev(gui_instr, gui_dev.name)
-            gui_dev.type = self.model.devType(gui_dev.ph_dev)
+        gui_instr.nickname = self.checkInstrLoadingName(gui_instr.nickname)
+        # - try load the pyHegel instrument
+        try:
+            kwargs = {}
+            if gui_instr.slot is not None:
+                kwargs['slot'] = gui_instr.slot
+            gui_instr.ph_instr = self.model.loadInstrument(gui_instr.nickname,
+                                                 gui_instr.instr_cls,
+                                                 gui_instr.address,
+                                                 **kwargs)
+        except Exception as e:
+            tb_str = ''.join(traceback.format_tb(e.__traceback__))
+            self.pop.instrLoadError(e, tb_str)
+        # - try load the pyHegel devices
+        if gui_instr.ph_instr is not None:
+            self.loadGuiDevices(gui_instr)
         # - add it to the lab
         self.gui_instruments[gui_instr.nickname] = gui_instr
         self.view_rack.gui_addGuiInstrument(gui_instr)
         self.view_rack.win_add.close()
     
-    def buildGuiInstrument(self, nickname, instr_name, instr_cls, address):
+    def loadGuiDevices(self, gui_instr):
+        for gui_dev in gui_instr.gui_devices.values():
+            #gui_dev.nickname = self.checkDevLoadingName(gui_dev.nickname, gui_instr)
+            try:
+                gui_dev.ph_dev = self.model.getDevice(gui_instr.ph_instr, gui_dev.dev_name)
+                gui_dev.type = self.model.devType(gui_dev.ph_dev)
+            except Exception as e:
+                tb_str = ''.join(traceback.format_tb(e.__traceback__))
+                self.pop.devLoadError(e, tb_str)
+
+
+    def buildGuiInstrument(self, nickname, instr_name, addr, slot=None):
         # call only by the Rack. Loading is done in loadGuiInstrument.
-        if nickname == '': nickname = instr_name
-        gui_instr = GuiInstrument(nickname, instr_name, instr_cls, address)
-        for dev_name in supported_instruments[instr_name]['devices_name']:
-            dev_display_name = instr_name + ' - ' + dev_name
-            gui_dev = GuiDevice(dev_display_name, dev_name, gui_instr)
-            gui_instr.gui_devices[dev_name] = gui_dev
+        # build GuiInstrument and populate dvices, but no ph_instr nor ph_dev
+        settings = supported_instruments[instr_name]
+        instr_cls = settings['pyhegel_class']
+        gui_instr = GuiInstrument(nickname, instr_name, instr_cls, addr, slot)
+        for dev_name in settings['devices_name']:
+            if settings['has_channels']:
+                for ch in settings['channels']:
+                    auto_nickname = dev_name + '_' + str(ch)
+                    gui_dev = GuiDevice(auto_nickname, dev_name, gui_instr)
+                    gui_dev.ph_dict = dict(ch=ch)
+                    gui_instr.gui_devices[auto_nickname] = gui_dev
+            else:
+                gui_dev = GuiDevice(dev_name, dev_name, gui_instr)
+                gui_instr.gui_devices[dev_name] = gui_dev
         self.loadGuiInstrument(gui_instr)
 
     def removeGuiInstrument(self, gui_instr):
@@ -165,15 +215,53 @@ class HegelLab():
             
     def getValue(self, gui_dev):
         # get the value of the GuiDevice and update the gui
-        value = self.model.getValue(gui_dev.ph_dev)
+        value = self.model.getValue(gui_dev.getPhDev())
         self.view_rack.gui_updateDeviceValue(gui_dev, value)
+    
+    def setValue(self, gui_dev, val):
+        # set the value of the GuiDevice and update the gui
+        try:
+            self.model.setValue(gui_dev.getPhDev(), val)
+        except Exception as e:
+            tb_str = ''.join(traceback.format_tb(e.__traceback__))
+            self.pop.setValueError(e, tb_str)
+            return
+        self.view_rack.gui_updateDeviceValue(gui_dev, val)
+        self.view_rack.win_set.close()
+    
+    def createDevice(self, gui_dev, dev_type_name, args):
+        # create a device in the instrument
+        # dev_type: instruments.RampingDevice, instruments.ScalingDevice
+        #dev_settings = self.supported_devices[dev_type_name]
 
+        #dev_cls = dev_settings['pyhegel_class']
+        #name = dev_cls.__name__ + '(' + gui_dev.name + ')'
+        #display_name = self.makeGuiDevName(gui_dev.parent.instr_name, name)
+        #ph_dev = self.model.makeDevice(gui_dev.ph_dev,
+                                       #dev_settings['pyhegel_class'],
+                                       #args)
+        #new_dev = GuiDevice(display_name, name, gui_dev.parent)
+        #new_dev.ph_dev = ph_dev
+        #new_dev.is_extra = True
+        #new_dev.extra_type = dev_cls
+        #new_dev.extra_args = args
+        #new_dev.parent.gui_extra_devices.append(new_dev)
+        pass
+
+    def renameDevice(self, gui_dev, new_nickname):
+        # renamed by rack, tell the main window
+        new_nickname = self.checkDevLoadingName(new_nickname, gui_dev.parent)
+        gui_dev.parent.gui_devices[new_nickname] = gui_dev
+        gui_dev.parent.gui_devices.pop(gui_dev.nickname)
+        gui_dev.nickname = new_nickname
+        self.view_main.gui_renameDevice(gui_dev)
+        self.view_rack.gui_renameDevice(gui_dev)
 
     # -- SWEEP TREES --
 
-    def addSweepDev(self, instr_nickname, dev_name):
+    def addSweepDev(self, instr_nickname, dev_nickname):
         # add a device to the sweep tree, launch the config window
-        gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_name]
+        gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_nickname]
         if gui_dev.type[0] == False and self.pop.notSettable() == False:
             # if the device is not gettable, ask if we want to add it anyway
             return
@@ -182,18 +270,18 @@ class HegelLab():
         self.view_main.gui_addSweepGuiDev(gui_dev)
         self.showSweepConfig(gui_dev)
 
-    def addOutputDev(self, instr_nickname, dev_name):
+    def addOutputDev(self, instr_nickname, dev_nickname):
         # add a device to the output tree
-        gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_name]
+        gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_nickname]
         if gui_dev.type[1] == False and self.pop.notGettable() == False:
             return
         if self.view_main.tree_out.findItemByData(gui_dev) != None:
             self.pop.devAlreadyHere(); return
         self.view_main.gui_addOutItem(gui_dev)
     
-    def addLogDev(self, instr_nickname, dev_name):
+    def addLogDev(self, instr_nickname, dev_nickname):
         # add a device to the log tree
-        gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_name]
+        gui_dev = self.gui_instruments[instr_nickname].gui_devices[dev_nickname]
         if self.view_main.tree_log.findItemByData(gui_dev) != None:
             self.pop.devAlreadyHere(); return
         self.view_main.gui_addLogItem(gui_dev)
@@ -281,24 +369,26 @@ class HegelLab():
             'npts': npts, 'out': ph_out_devs,
             'filename': self._prepareFilename(),
             'extra_conf': ph_log_devs,
+            #'wait_after': self.sb_before_wait.value()
         }
 
         # run sweep thread
         self.sweep_thread.initSweepKwargs(sweep_kwargs)
         self.sweep_thread.initCurrentSweep(gui_sw_devs, gui_out_devs, time.time())
         self.sweep_thread.start()
+
         
         # update gui
+        self.view_display.onSweepStarted(self.sweep_thread.current_sweep)
         self.view_main.gui_sweepStarted()
-        self.view_display.gui_sweepStarted(self.sweep_thread.current_sweep)
         self.showDisplay()
 
     def onSweepSignalProgress(self, current_sweep):
-        # called by the sweep thread
-        # sweep_status is a SweepStatusObject
+        # connected to the sweep thread
+        # current_sweep is a SweepStatusObject
 
         # update display and status
-        self.view_display.gui_onIteration(current_sweep)
+        self.view_display.onIteration(current_sweep)
         self.view_main.gui_sweepStatus(current_sweep)
 
     def onSweepSignalError(self, name, message):

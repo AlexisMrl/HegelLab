@@ -74,12 +74,9 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="dev_wrap_device">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
+       <widget class="QPushButton" name="pb_rename">
         <property name="text">
-         <string>Wrap device</string>
+         <string>Rename</string>
         </property>
        </widget>
       </item>
@@ -96,6 +93,16 @@
         </property>
        </spacer>
       </item>
+      <item>
+       <widget class="QPushButton" name="dev_create">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="text">
+         <string>Create device</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
    </layout>
@@ -106,7 +113,7 @@
      <x>0</x>
      <y>0</y>
      <width>813</width>
-     <height>26</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

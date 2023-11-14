@@ -5,8 +5,8 @@ class Model():
     # The model is the only one doing the pyHegel commands
     # except for the sweep thread
     
-    def loadInstrument(self, cls, addr, nickname):
-        instr = cls(addr)
+    def loadInstrument(self, nickname, cls, address, **kwargs):
+        instr = cls(address, **kwargs)
         instr.header.set(nickname)
         return instr
 
@@ -32,3 +32,7 @@ class Model():
         settable = True if dev._setdev_p is not None else False
         gettable = True if dev._getdev_p is not None else False
         return (settable, gettable)
+    
+    def makeDevice(self, dev, cls, args):
+        dev = cls(*args)
+        return dev

@@ -69,6 +69,12 @@ class Popup():
                       traceback)
         return
 
+    def setValueError(self, exception, traceback):
+        self._popErrorWithDetails(QMessageBox.Warning,
+                      'Error',
+                      'Error while setting value: ' + str(exception),
+                      traceback)
+        return
 
     # -- yes/no --
     def _popYesNo(self, title, message):

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>HglMapperWindow</class>
- <widget class="QMainWindow" name="HglMapperWindow">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>973</width>
-    <height>523</height>
+    <width>938</width>
+    <height>532</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,13 +15,13 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
-    <item row="0" column="2">
+    <item row="1" column="1">
      <widget class="QGroupBox" name="gb_out">
       <property name="title">
        <string>Out</string>
       </property>
-      <layout class="QGridLayout" name="gridLayout_3">
-       <item row="0" column="2">
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
         <widget class="Tree" name="tree_out">
          <column>
           <property name="text">
@@ -30,7 +30,7 @@
          </column>
         </widget>
        </item>
-       <item row="1" column="2">
+       <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
           <spacer name="horizontalSpacer_2">
@@ -62,9 +62,6 @@
     </item>
     <item row="1" column="2">
      <widget class="QGroupBox" name="gb_log">
-      <property name="toolTip">
-       <string/>
-      </property>
       <property name="title">
        <string>Log</string>
       </property>
@@ -108,13 +105,25 @@
       </layout>
      </widget>
     </item>
-    <item row="0" column="1" rowspan="2">
+    <item row="0" column="3">
+     <widget class="QGroupBox" name="groupBox">
+      <property name="title">
+       <string>Comment</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="QPlainTextEdit" name="te_comment"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="0" column="1" colspan="2">
      <widget class="QGroupBox" name="gb_sweep">
       <property name="title">
        <string>Sweep</string>
       </property>
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="0" column="0">
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
         <widget class="Tree" name="tree_sw">
          <column>
           <property name="text">
@@ -133,7 +142,7 @@
          </column>
         </widget>
        </item>
-       <item row="1" column="0">
+       <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
           <spacer name="horizontalSpacer">
@@ -166,6 +175,32 @@
       </layout>
      </widget>
     </item>
+    <item row="1" column="3">
+     <widget class="QGroupBox" name="groupBox_2">
+      <property name="title">
+       <string>Sweep</string>
+      </property>
+      <layout class="QFormLayout" name="formLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Wait between set and get:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="PyScientificSpinBox" name="sb_before_wait">
+         <property name="decimals">
+          <number>5</number>
+         </property>
+         <property name="value">
+          <double>0.020000000000000</double>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -173,8 +208,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>973</width>
-     <height>26</height>
+     <width>938</width>
+     <height>21</height>
     </rect>
    </property>
   </widget>
@@ -232,6 +267,11 @@
   </action>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>PyScientificSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>pyHegel.gui.ScientificSpinBox</header>
+  </customwidget>
   <customwidget>
    <class>Tree</class>
    <extends>QTreeWidget</extends>

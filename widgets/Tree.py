@@ -62,7 +62,7 @@ class Tree(QTreeWidget):
 
     def mimeTypes(self):
         # define the mime types that can be dragged
-        return ['device-name', 'instrument-name']
+        return ['device-nickname', 'instrument-nickname']
 
     def mimeData(self, items):
         # what happens when the item is dragged
@@ -70,14 +70,15 @@ class Tree(QTreeWidget):
         item = items[0]
         # get data:
         data = self.getData(item)
+        print(data.nickname)
         if isinstance(data, GuiInstrument):
             b_name = bytes(data.nickname, 'utf-8')
-            mime_data.setData('instrument-name', b_name)
+            mime_data.setData('instrument-nickname', b_name)
         elif isinstance(data, GuiDevice):
             b_parent_name = bytes(data.parent.nickname, 'utf-8')
-            b_name =  bytes(data.name, 'utf-8')
-            mime_data.setData('instrument-name', b_parent_name)
-            mime_data.setData('device-name', b_name)
+            b_name =  bytes(data.nickname, 'utf-8')
+            mime_data.setData('instrument-nickname', b_parent_name)
+            mime_data.setData('device-nickname', b_name)
         return mime_data
             
     def dropMimeData(self, parent, row, data, action):
