@@ -8,6 +8,7 @@ class CurrentSweep():
         self.sw_devs = None # list of swept gui_devs
         self.out_devs = None # list of out gui_devs
         self.datas = None # full dict of datas from the sweep
+
     
 class SweepThread(QThread):
     progress_signal = pyqtSignal(CurrentSweep) # (CurrentSweep)
@@ -22,6 +23,7 @@ class SweepThread(QThread):
         super(SweepThread, self).__init__()
         self.sweep_multi_fn = sweep_multi_fn
         self.loop_control = loop_control
+        self.fn_kwargs = None
 
         self.current_sweep = CurrentSweep()
     
@@ -59,14 +61,12 @@ class SweepThread(QThread):
         i = datas["iter_part"]-1
         for out_dev, val in zip(self.current_sweep.out_devs,
                                 datas["read_vals"]):
-            out_dev.values[i] = val
+            out_dev.values[out_dev.sw_idx.current()] = val
 
-        for sw_dev, val in zip(self.current_sweep.sw_devs,
-                               datas["ask_vals"]):
-            sw_dev.values[i] = val
+        #for sw_dev, val in zip(self.current_sweep.sw_devs,
+                               #datas["ask_vals"]):
+            #sw_dev.values[*out_dev.idx.current()] = val
 
         # emit self.progress
         self.progress_signal.emit(self.current_sweep)
     
-    def resetStartTime(self, time):
-        self.current_sweep.start_time = time

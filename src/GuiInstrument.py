@@ -57,6 +57,7 @@ class GuiDevice():
         # a np.array for when the device is in a sweep (swept or output)
         # size is allocated at the beginning of the sweep
         self.values = None
+        self.sw_idx = None # SweepIdxIter object
     
     def getDisplayName(self, type, full=False):
         # if full: dev_name = dev_name + ph_dict
@@ -85,3 +86,4 @@ class GuiDevice():
         me.extra_type = self.extra_type
         me.extra_args = self.extra_args
         return me
+

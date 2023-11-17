@@ -24,13 +24,13 @@ class Popup():
         msg.setWindowIcon(QtGui.QIcon('resources/favicon/favicon.png'))
         msg.exec_()
     
-    def missingSweepParameter(self):
+    def sweepMissingDevParameter(self):
         self._popError(QMessageBox.Warning,
                       'Warning',
                       'A device is missing its sweep parameters')
         return
 
-    def noSweepDevice(self):
+    def sweepNoDevice(self):
         self._popError(QMessageBox.Warning,
                       'Warning',
                       'No device is set to sweep')
@@ -40,6 +40,12 @@ class Popup():
         self._popError(QMessageBox.Warning,
                       'Warning',
                       'A device is set to sweep 0 points')
+        return
+    
+    def sweepStartStopEqual(self):
+        self._popError(QMessageBox.Warning,
+                      'Warning',
+                      'A device is set to sweep from a value to the same value')
         return
     
     def devAlreadyHere(self):
@@ -62,10 +68,10 @@ class Popup():
                       traceback)
         return
     
-    def sweepError(self, exception, traceback):
+    def sweepThreadError(self, exception, traceback):
         self._popErrorWithDetails(QMessageBox.Critical,
                       'Sweep error',
-                      'Error from pyHegel while sweeping: ' + str(exception),
+                      'Error from pyHegel thread while sweeping: ' + str(exception),
                       traceback)
         return
 
@@ -87,17 +93,16 @@ class Popup():
         msg.setWindowIcon(QtGui.QIcon('resources/favicon/favicon.png'))
         return msg.exec_() == QMessageBox.Yes
 
+    def sweepNoOutputDevice(self):
+        return self._popYesNo('No output device',
+                              'No output device is set. Continue?')
+
     def askRemoveInstrument(self, nickname):
         msg = 'Are you sure you want to remove ' + nickname + '?'
         return self._popYesNo('Remove instrument', msg)
 
-    def noOutputDevice(self):
-        return self._popYesNo('No output device',
-                              'No output device is set. Continue?')
-        
     def askQuit(self):
-        return self._popYesNo('Quit',
-                              'Are you sure you want to quit?')
+        return self._popYesNo('Quit', 'Are you sure you want to quit?')
 
     def notSettable(self):
         return self._popYesNo('Not settable',

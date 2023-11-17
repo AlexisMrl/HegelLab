@@ -176,7 +176,7 @@
      </widget>
     </item>
     <item row="1" column="3">
-     <widget class="QGroupBox" name="groupBox_2">
+     <widget class="QGroupBox" name="gb_sweep_2">
       <property name="title">
        <string>Sweep</string>
       </property>
@@ -184,7 +184,7 @@
        <item row="0" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>Wait between set and get:</string>
+          <string>Wait before get (s):</string>
          </property>
         </widget>
        </item>
@@ -195,6 +195,23 @@
          </property>
          <property name="value">
           <double>0.020000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Alternate:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="cb_alternate">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -209,7 +226,7 @@
      <x>0</x>
      <y>0</y>
      <width>938</width>
-     <height>21</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>

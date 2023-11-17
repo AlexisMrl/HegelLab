@@ -1,19 +1,27 @@
+![HegelLab](./resources/logo_white.png#gh-dark-mode-only)
+![HegelLab](./resources/logo_black.png#gh-light-mode-only)
+
+## Presentation
 My attempt at building an interface for pyHegel.
 
 This is highly inspired by Labber and VsdVg (the original interface on top of pyHegel).
-
 It is intended to be more structured than the original VsdVg, so adding feature should be easier.
-Reusing from VsdVg:
-- start_qt_app, sliderVert, matplotlibfig and Display window
 
 The objective is to make it as modular and versatile as possible.
-Main feature:
-- load 'any' instrument from pyHegel (with minimal prior work)
-- define your custom devices
-- save and load your whole experience to a file (with custom devices)
 
-Developed with pyHegel python 3 in mind.
-In a pyHegel console, run HegelLab.py
+Main features (not much more than VsdVg, but cleaner):
+- load 'any' instrument from pyHegel while choosing its devices (with minimal prior work),
+- save and load your whole loaded instruments and custom devices to a file,
+- responsive live display,
+- new: renaming devices.
+
+
+Note that sweep and live view for higher than two swept device is currently not supported.
+
+## Packages
+Need a Python3 installation of PyHegel and the package `pyqtgraph` in version `>=0.12.3`.
+
+## Installation (wip)
 
 Installation procecure python 3, PyHegel and HegelLab:
 ```py
@@ -29,3 +37,4 @@ cd <PyHegel dir>
 pip install .
 ```
 Then clone this repo and run `HegelLab.py`
+

@@ -36,6 +36,8 @@ class Main(QMainWindow):
         self.statusBar().addWidget(self.sweep_estimation)
         # width for first column for tree:
         self.tree_sw.setColumnWidth(0, 175)
+        # before_wait:
+        self.sb_before_wait.setMinimum(0)
         
         # -- end ui setup --
         self.lab = lab
@@ -211,6 +213,8 @@ class Main(QMainWindow):
         self.gb_sweep.setEnabled(False)
         self.gb_out.setEnabled(False)
         self.gb_log.setEnabled(False)
+        self.gb_param.setEnabled(False)
+        self.gb_comment.setEnabled(False)
         self.sweep_status.setText('Running')
     
     def gui_sweepFinished(self):
@@ -220,6 +224,8 @@ class Main(QMainWindow):
         self.gb_sweep.setEnabled(True)
         self.gb_out.setEnabled(True)
         self.gb_log.setEnabled(True)
+        self.gb_param.setEnabled(False)
+        self.gb_comment.setEnabled(True)
         # Reset pause button (in case of Pause->Abort):
         if self.pause_button.text() == 'Resume':
             self.gui_sweepResumed()

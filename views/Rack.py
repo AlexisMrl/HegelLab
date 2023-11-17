@@ -112,7 +112,7 @@ class Rack(QMainWindow):
         # load window/RackCreateDevice.ui
         win = self.win_create_dev
         win.setWindowTitle('Create device')
-        win.setWindowIcon(QtGui.QIcon('resources/instruments.svg'))
+        win.setWindowIcon(QtGui.QIcon('resources/list-add.svg'))
         uic.loadUi('ui/RackCreateDevice.ui', win)
         win.setWindowFlags(Qt.WindowStaysOnTopHint)
         win.splitter.setSizes([100, 300])
@@ -204,7 +204,7 @@ class Rack(QMainWindow):
         # minimal window for loading device
         self.win_add.setWindowTitle('Add instrument')
         self.win_add.resize(350, 100)
-        self.win_add.setWindowIcon(QtGui.QIcon('resources/favicon/favicon.png'))
+        self.win_add.setWindowIcon(QtGui.QIcon('resources/list-add.svg'))
         wid = QWidget(); self.win_add.setCentralWidget(wid)
         layout = QVBoxLayout(); wid.setLayout(layout)
         

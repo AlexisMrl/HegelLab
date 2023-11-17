@@ -5,9 +5,11 @@ from PyQt5.QtWidgets import QApplication
 from views import Main, Rack, Display
 from src import LoaderSaver, Model, Popup, SweepThread
 from src.GuiInstrument import GuiInstrument, GuiDevice
+from src.SweepIdxIter import IdxIter
 
 import numpy as np
 import time
+import os
 
 
 # HegelLab is made to support any instrument with minimal effort.
@@ -249,10 +251,9 @@ class HegelLab():
         pass
 
     def renameDevice(self, gui_dev, new_nickname):
-        # renamed by rack, tell the main window
+        gui_dev = gui_dev.parent.gui_devices.pop(gui_dev.nickname) # remove first
         new_nickname = self.checkDevLoadingName(new_nickname, gui_dev.parent)
         gui_dev.parent.gui_devices[new_nickname] = gui_dev
-        gui_dev.parent.gui_devices.pop(gui_dev.nickname)
         gui_dev.nickname = new_nickname
         self.view_main.gui_renameDevice(gui_dev)
         self.view_rack.gui_renameDevice(gui_dev)
@@ -306,34 +307,36 @@ class HegelLab():
         filename = self.view_main.filename_edit.text()
         if filename == '':
             filename = 'sweep'
-        filename = './temp/' + filename
+        date = time.strftime("%Y%m%d")
+        dir_path = './temp/' + date
+        if not os.path.exists(dir_path):
+            os.mkdir(dir_path)
+        filename = dir_path + '/%t_' + filename + '.txt'
         return filename
 
     def _startSweepCheckError(self, start, stop, npts, ph_sw_devs, ph_out_devs):
         if None in start or None in stop or None in npts:
-            self.pop.missingSweepParameter(); return True
+            self.pop.sweepMissingDevParameter(); return True
         if ph_sw_devs == []:
-            self.pop.noSweepDevice(); return True
+            self.pop.sweepNoDevice(); return True
         if 0 in npts:
             self.pop.sweepZeroPoints(); return True
-        if ph_out_devs == [] and self.pop.noOutputDevice() == False:
+        for start, stop in zip(start, stop):
+            if start == stop:
+                self.pop.sweepStartStopEqual(); return True
+        if ph_out_devs == [] and self.pop.sweepNoOutputDevice() == False:
             return True
         return False
     
-    def _genListsAndAllocData(self, gui_sw_devs, gui_out_devs, gui_log_devs):
-        # allocate data in gui_devices for the live view.
-        # for simplicity, we allocate the total number of points
-        # even for devices that are swept (e.g not output devices)
-        # NOT MEMORY EFFICIENT. If software is slow, it might be the reason. 
-        total_points = 1
+    def _genLists(self, gui_sw_devs, gui_out_devs, gui_log_devs):
             
+        # generate the lists for kwargs
         ph_sw_devs, start, stop, npts = [], [], [], []
         for dev in gui_sw_devs:
             ph_sw_devs.append(dev.ph_dev)
             start.append(dev.sweep[0])
             stop.append(dev.sweep[1])
             npts.append(dev.sweep[2])
-            total_points *= dev.sweep[2]
             
         ph_out_devs = []
         for dev in gui_out_devs:
@@ -343,10 +346,26 @@ class HegelLab():
         for dev in gui_log_devs:
             ph_log_devs.append(dev.ph_dev)
         
-        for dev in gui_sw_devs + gui_out_devs:
-            dev.values = np.full(total_points, np.nan)
-        
         return ph_sw_devs, start, stop, npts, ph_out_devs, ph_log_devs
+
+    def _allocData(self, gui_out_devs, start, stop, npts, alternate):
+        # start, stop, npts are lists
+        # allocate data in out_devices for the live view.
+        # we allocate a numpy array for output devices
+        # and an 'custom iterator' so the filling is in
+        # a good order.
+
+        reverse = [False]*len(start)
+        for i, (sta, sto) in enumerate(zip(start, stop)):
+            if sta > sto: reverse[i] = True
+
+        if len(npts)==1:
+            npts = npts + [1] # not .append to preserve npts
+        if len(npts)==2:
+            for dev in gui_out_devs:
+                dev.values = np.full(npts, np.nan)
+                dev.sw_idx = IdxIter(*npts, *reverse, alternate)
+        
 
     def startSweep(self):
         # trigger on start sweep button
@@ -357,7 +376,9 @@ class HegelLab():
         
         # generate lists and allocate data
         ph_sw_devs, start, stop, npts, ph_out_devs, ph_log_devs = \
-            self._genListsAndAllocData(gui_sw_devs, gui_out_devs, gui_log_devs)
+            self._genLists(gui_sw_devs, gui_out_devs, gui_log_devs)
+        alternate = {True:'alternate', False:False}[self.view_main.cb_alternate.isChecked()]
+        self._allocData(gui_out_devs, start, stop, npts, alternate)
         
         # errors
         if self._startSweepCheckError(start, stop, npts, ph_sw_devs, ph_out_devs):
@@ -368,13 +389,16 @@ class HegelLab():
             'dev': ph_sw_devs, 'start': start, 'stop': stop,
             'npts': npts, 'out': ph_out_devs,
             'filename': self._prepareFilename(),
-            'extra_conf': ph_log_devs,
-            #'wait_after': self.sb_before_wait.value()
+            'extra_conf': [self.view_main.te_comment.toPlainText()] + ph_log_devs,
+            'beforewait': self.view_main.sb_before_wait.value(),
+            'updown': alternate,
         }
 
         # run sweep thread
         self.sweep_thread.initSweepKwargs(sweep_kwargs)
         self.sweep_thread.initCurrentSweep(gui_sw_devs, gui_out_devs, time.time())
+        for out in gui_out_devs:
+            out.alternate = self.view_main.cb_alternate.isChecked()
         self.sweep_thread.start()
 
         
@@ -393,7 +417,7 @@ class HegelLab():
 
     def onSweepSignalError(self, name, message):
         # called by the sweep thread
-        self.pop.sweepError(name, message)
+        self.pop.sweepThreadError(name, message)
     
     def onSweepSignalFinished(self):
         # called by the sweep thread
@@ -407,15 +431,13 @@ class HegelLab():
     def resumeSweep(self):
         # called by the main window
         self.loop_control.pause_enabled = False
-        self.sweep_thread.resetStartTime(time.time())
         self.view_main.gui_sweepResumed()
     
     def abortSweep(self):
         # called by the main window
         self.loop_control.abort_enabled = True
         self.loop_control.pause_enabled = False # in case of Pause->Abort
-        #self.view_main.gui_sweepFinished()
-        # TODO: handle abort status
+        self.view_main.gui_sweepFinished()
 
 
 

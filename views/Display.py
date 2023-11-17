@@ -22,6 +22,8 @@ class Display(QMainWindow):
         self.unfiltered_data = None # raw data, before derivative
         self.x_for_horiz = None # x axis for horizontal graph
         self.y_for_vert = None # y axis for vertical graph
+        self.for_debug = []
+
 
         self.toolBar2 = QToolBar()
         self.addToolBarBreak()
@@ -232,19 +234,12 @@ class Display(QMainWindow):
         #self.drawSweep(out_devs[0], sweep_devs, auto_range=True)
 
     def drawSweep(self, out_dev, sweep_devs):
-        if len(sweep_devs) == 1:
-            data = out_dev.values.reshape(len(sweep_devs[0].values), 1)
-            # check if reversed sweep
-            if sweep_devs[0].sweep[1] < sweep_devs[0].sweep[0]: data = np.flip(data, axis=0)
-        elif len(sweep_devs) == 2:
-            data = out_dev.values.reshape(sweep_devs[0].sweep[2], sweep_devs[1].sweep[2])
-            # reversed sweep, flip data
-            if sweep_devs[0].sweep[1] < sweep_devs[0].sweep[0]: data = np.flip(data, axis=0)
-            if sweep_devs[1].sweep[1] < sweep_devs[1].sweep[0]: data = np.flip(data, axis=1)
+        data = out_dev.values
         self.unfiltered_data = data
+        self.for_debug.append(data)
         # draw
         self.drawImage(data)
-        self.updateBar()
+        self.updateBar() # not sure if i leave it here (feature wise)
         self.updateSideGraphs()
 
 
