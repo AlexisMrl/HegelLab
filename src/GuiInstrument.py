@@ -11,27 +11,25 @@ class GuiInstrument():
         self.slot = slot
 
         self.ph_instr = None
-        self.gui_devices = {} # {name: GuiDevice}
-        self.gui_extra_devices = {} # {nickname: GuiDevice} (ramping/scaling devs)
+        self.gui_devices = {} # {nickname: GuiDevice}
     
-    def getDisplayName(self, type, full=False):
+    def getDisplayName(self, type='', full=False):
+        # args for consistency with GuiDevice == USELESS
         if self.nickname != self.instr_name:
             return self.nickname + ' (' + self.instr_name + ')'
+        else:
+            return self.nickname
+
+    def getGuiDevByDevName(self, dev_name): # name is not the nickname
+        for gui_dev in self.gui_devices.values():
+            if gui_dev.dev_name == dev_name:
+                return gui_dev
+        return None
 
     def getCopy(self):
         # return a 'copy' of self without ph_instr and ph_dev
         # so pickle can save it, and ph devs are not dereferenced
         me = GuiInstrument(self.nickname, self.instr_name, self.instr_cls, self.address)
-        gui_devices = {}
-        for name, gui_dev in self.gui_devices.items():
-            gui_dev_copy = gui_dev.getCopy(me)
-            gui_devices[name] = gui_dev_copy
-        me.gui_devices = gui_devices
-        gui_extra_devices = {}
-        for name, gui_dev in self.gui_extra_devices.items():
-            gui_dev_copy = gui_dev.getCopy(me)
-            gui_extra_devices[name] = gui_dev_copy
-        me.gui_extra_devices = gui_extra_devices
         return me
 
 
@@ -44,15 +42,20 @@ class GuiDevice():
         self.parent = parent
 
         # kept when saving/loading
+        self.hide = False # if True, the device is not shown in the gui
         self.ph_dict = None # if the device is a tuple, holds the kwargs
-        self.sweep = [None, None, None] # [start, stop, npts]
-            # for ramping and scaling devices
-        self.is_extra = False
-        self.extra_type = None
-        self.extra_args = None # (*args)
+        # for ramping and scaling devices
+        self.needed_by = [] # list of dev_name: device that needs this one
+        self.needs = [] # list of dev_name: device that this one needs
+        self.extra_type = None # key for supported_devices
+        self.extra_args = None # {arg_name: arg_value}
 
+
+        # not kept when saving
         self.ph_dev = None
         self.type = (False, False) # (settable, gettable)
+        self.sweep = [None, None, None] # [start, stop, npts]
+        self.cache_value = None # a value to cache the last value read
     
         # a np.array for when the device is in a sweep (swept or output)
         # size is allocated at the beginning of the sweep
@@ -60,7 +63,10 @@ class GuiDevice():
         self.sw_idx = None # SweepIdxIter object
     
     def getDisplayName(self, type, full=False):
-        # if full: dev_name = dev_name + ph_dict
+        # type: 'short' or 'long'
+        #   short: nickname + ph_dev name
+        #   long: instr name + nickname + ph_dev name
+        # full: if True, add the ph_dict to the name
         dev_name = self.dev_name
         if full and self.ph_dict is not None:
             str_ars = [str(k) + '=' + str(v) for k, v in self.ph_dict.items()]
@@ -79,7 +85,7 @@ class GuiDevice():
         if self.ph_dict is not None:
             return (dev, self.ph_dict)
         return dev
-    
+
     def getCopy(self, parent):
         me = GuiDevice(self.display_name, self.name, parent)
         me.is_extra = self.is_extra

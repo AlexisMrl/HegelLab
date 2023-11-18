@@ -5,9 +5,9 @@ from PyQt5 import QtGui, QtCore
 from src.GuiInstrument import GuiInstrument, GuiDevice
 
 
-class Tree(QTreeWidget):
+class TreeWidget(QTreeWidget):
     def __init__(self, *args, **kwargs):
-        super(Tree, self).__init__()
+        super(TreeWidget, self).__init__()
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setDragDropMode(QAbstractItemView.DragDrop)
     
@@ -70,7 +70,6 @@ class Tree(QTreeWidget):
         item = items[0]
         # get data:
         data = self.getData(item)
-        print(data.nickname)
         if isinstance(data, GuiInstrument):
             b_name = bytes(data.nickname, 'utf-8')
             mime_data.setData('instrument-nickname', b_name)

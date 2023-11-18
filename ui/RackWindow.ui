@@ -16,7 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="Tree" name="tree">
+     <widget class="TreeWidget" name="tree">
       <column>
        <property name="text">
         <string>Name</string>
@@ -47,7 +47,7 @@
     <item>
      <layout class="QHBoxLayout" name="hbox_device">
       <item>
-       <widget class="QPushButton" name="dev_get_value">
+       <widget class="QPushButton" name="pb_get">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -57,7 +57,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="dev_set_value">
+       <widget class="QPushButton" name="pb_set">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -75,8 +75,31 @@
       </item>
       <item>
        <widget class="QPushButton" name="pb_rename">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>Rename</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pb_create">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Create device</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pb_config">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Config device</string>
         </property>
        </widget>
       </item>
@@ -94,12 +117,12 @@
        </spacer>
       </item>
       <item>
-       <widget class="QPushButton" name="dev_create">
+       <widget class="QPushButton" name="pb_remove">
         <property name="enabled">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
         <property name="text">
-         <string>Create device</string>
+         <string>Remove device</string>
         </property>
        </widget>
       </item>
@@ -113,7 +136,7 @@
      <x>0</x>
      <y>0</y>
      <width>813</width>
-     <height>21</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>
@@ -185,9 +208,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>Tree</class>
+   <class>TreeWidget</class>
    <extends>QTreeWidget</extends>
-   <header>widgets/Tree.h</header>
+   <header>widgets/TreeWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

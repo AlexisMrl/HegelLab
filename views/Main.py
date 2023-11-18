@@ -1,8 +1,10 @@
 import time
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, \
                             QLineEdit, QTreeWidgetItem, QGridLayout, \
-                            QSpinBox, QLabel, QPushButton
+                            QSpinBox, QLabel, QPushButton, \
+                            QMenu, QAction
 from PyQt5 import QtCore, QtGui, uic
+from PyQt5.QtCore import Qt
 from pyHegel.gui import ScientificSpinBox
 
 class Main(QMainWindow):
@@ -13,6 +15,7 @@ class Main(QMainWindow):
         self.setWindowTitle('HegelLab')
         self.setWindowIcon(QtGui.QIcon('resources/favicon/favicon.png'))
         self.toolBar.setToolButtonStyle(2) # text beside icon
+        self.toolBar.setContextMenuPolicy(Qt.PreventContextMenu)
         # add a line edit in the toolbar for filename (not possible from designer):
         self.filename_edit = QLineEdit()
         self.filename_edit.setObjectName('filename_edit')
@@ -26,6 +29,20 @@ class Main(QMainWindow):
         self.abort_button = QPushButton('Abort')
         self.abort_button.setEnabled(False)
         self.toolBar.addWidget(self.abort_button)
+        # display buttons
+        menu_display = QMenu()
+        simple_icon = QtGui.QIcon('resources/display1.svg')
+        dual_icon = QtGui.QIcon('resources/display1.svg')
+        self.btn_display = QAction(simple_icon, 'Display')
+        self.btn_display.triggered.connect(lambda: lab.showDisplay(None))
+        self.one_display_action = QAction(simple_icon, 'Simple display')
+        self.one_display_action.triggered.connect(lambda: lab.showDisplay(False))
+        self.two_display_action = QAction(dual_icon, 'Dual display')
+        self.two_display_action.triggered.connect(lambda: lab.showDisplay(True))
+        menu_display.addAction(self.one_display_action)
+        menu_display.addAction(self.two_display_action)
+        self.btn_display.setMenu(menu_display)
+        self.toolBar.insertAction(self.toolBar.actions()[1],self.btn_display) # could not find a better way to insert before the separator
         # add label for sweep status to status bar
         self.statusBar().addWidget(QLabel('Sweep status: '))
         self.sweep_status = QLabel('Ready')
@@ -35,7 +52,7 @@ class Main(QMainWindow):
         self.sweep_estimation = QLabel()
         self.statusBar().addWidget(self.sweep_estimation)
         # width for first column for tree:
-        self.tree_sw.setColumnWidth(0, 175)
+        self.tree_sw.setColumnWidth(0, 200)
         # before_wait:
         self.sb_before_wait.setMinimum(0)
         
@@ -224,7 +241,7 @@ class Main(QMainWindow):
         self.gb_sweep.setEnabled(True)
         self.gb_out.setEnabled(True)
         self.gb_log.setEnabled(True)
-        self.gb_param.setEnabled(False)
+        self.gb_param.setEnabled(True)
         self.gb_comment.setEnabled(True)
         # Reset pause button (in case of Pause->Abort):
         if self.pause_button.text() == 'Resume':

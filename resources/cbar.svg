@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 576 512"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="cbar.svg"
+   inkscape:version="1.3.1 (91b66b0783, 2023-11-16)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <linearGradient
+       id="linearGradient7">
+      <stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="0"
+         id="stop9" />
+      <stop
+         style="stop-color:#000000;stop-opacity:0.53333333;"
+         offset="0.46575344"
+         id="stop11" />
+      <stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="1"
+         id="stop10" />
+    </linearGradient>
+    <inkscape:path-effect
+       effect="fillet_chamfer"
+       id="path-effect7"
+       is_visible="true"
+       lpeversion="1"
+       nodesatellites_param="F,0,0,1,0,5,0,1 @ F,0,0,1,0,5,0,1 @ F,0,0,1,0,5,0,1 @ F,0,0,1,0,5,0,1"
+       radius="5"
+       unit="px"
+       method="auto"
+       mode="F"
+       chamfer_steps="1"
+       flexible="true"
+       use_knot_distance="true"
+       apply_no_radius="true"
+       apply_with_radius="true"
+       only_selected="false"
+       hide_knots="false" />
+    <inkscape:path-effect
+       effect="fillet_chamfer"
+       id="path-effect6"
+       is_visible="true"
+       lpeversion="1"
+       nodesatellites_param="F,1,0,1,0,0.01,0,1 @ F,1,0,1,0,0.01,0,1 @ F,1,0,1,0,0.01,0,1 @ F,1,0,1,0,0.01,0,1"
+       radius="0"
+       unit="px"
+       method="auto"
+       mode="F"
+       chamfer_steps="1"
+       flexible="true"
+       use_knot_distance="true"
+       apply_no_radius="true"
+       apply_with_radius="true"
+       only_selected="false"
+       hide_knots="false" />
+    <inkscape:path-effect
+       effect="fillet_chamfer"
+       id="path-effect5"
+       is_visible="true"
+       lpeversion="1"
+       nodesatellites_param="F,0,0,1,0,5,0,1 @ F,0,0,1,0,5,0,1 @ F,0,0,1,0,5,0,1 @ F,0,0,1,0,5,0,1"
+       radius="5"
+       unit="px"
+       method="auto"
+       mode="F"
+       chamfer_steps="1"
+       flexible="true"
+       use_knot_distance="true"
+       apply_no_radius="true"
+       apply_with_radius="true"
+       only_selected="false"
+       hide_knots="false" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient7"
+       id="linearGradient10"
+       x1="156.96158"
+       y1="419.64362"
+       x2="157.62053"
+       y2="189.46515"
+       gradientUnits="userSpaceOnUse"
+       spreadMethod="pad" />
+  </defs>
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.0730898"
+     inkscape:cx="292.61298"
+     inkscape:cy="277.70277"
+     inkscape:window-width="1363"
+     inkscape:window-height="902"
+     inkscape:window-x="254"
+     inkscape:window-y="1279"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg1"
+     showgrid="false">
+    <inkscape:grid
+       id="grid10"
+       units="px"
+       originx="0"
+       originy="0"
+       spacingx="1"
+       spacingy="1"
+       empcolor="#0099e5"
+       empopacity="0.30196078"
+       color="#0099e5"
+       opacity="0.14901961"
+       empspacing="5"
+       dotted="false"
+       gridanglex="30"
+       gridanglez="30"
+       visible="false" />
+  </sodipodi:namedview>
+  <!--! Font Awesome Pro 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. -->
+  <path
+     style="fill:url(#linearGradient10);fill-rule:nonzero;stroke-width:1.00013;stroke-dasharray:none"
+     id="rect1"
+     width="98.182755"
+     height="222.7233"
+     x="106.22285"
+     y="190.86299"
+     rx="1.03"
+     ry="1.0658708"
+     inkscape:path-effect="#path-effect6"
+     sodipodi:type="rect"
+     d="m 107.20467,190.86299 h 94.9737 a 2.227233,2.227233 45 0 1 2.22723,2.22723 v 219.51424 a 0.98182755,0.98182755 135 0 1 -0.98183,0.98183 h -94.97369 a 2.227233,2.227233 45 0 1 -2.22723,-2.22723 V 191.84482 a 0.98182755,0.98182755 135 0 1 0.98182,-0.98183 z"
+     transform="matrix(2.5458946,0,0,2.0840828,-107.406,-368.04397)" />
+  <g
+     id="g10"
+     transform="matrix(4.8050355,0,0,5.0774651,-385.45891,-1108.1261)">
+    <path
+       style="fill:#000000;fill-rule:nonzero;stroke:#ffffff;stroke-width:1.44981;stroke-dasharray:none;stroke-opacity:1"
+       d="m 113.46119,247.41639 h 52.73567"
+       id="path10" />
+    <rect
+       style="fill:#ffffff;fill-rule:nonzero;stroke:none;stroke-width:3.341;stroke-dasharray:none;stroke-opacity:1"
+       id="rect10"
+       width="6.9891634"
+       height="6.9891634"
+       x="-79.405609"
+       y="270.16455"
+       rx="1.03"
+       ry="1.0658708"
+       transform="rotate(-45)" />
+  </g>
+  <g
+     id="g11"
+     transform="matrix(4.8050355,0,0,5.0774651,-383.87578,-1193.4432)">
+    <path
+       style="fill:#000000;fill-rule:nonzero;stroke:#ffffff;stroke-width:1.44527;stroke-dasharray:none;stroke-opacity:1"
+       d="m 113.62593,309.46963 h 52.40619"
+       id="path10-2" />
+    <rect
+       style="fill:#ffffff;fill-rule:nonzero;stroke:none;stroke-width:3.341;stroke-dasharray:none;stroke-opacity:1"
+       id="rect10-1"
+       width="6.9891634"
+       height="6.9891634"
+       x="-123.28388"
+       y="314.04282"
+       rx="1.03"
+       ry="1.0658708"
+       transform="rotate(-45)" />
+  </g>
+</svg>

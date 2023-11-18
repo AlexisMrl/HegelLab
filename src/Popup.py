@@ -82,6 +82,12 @@ class Popup():
                       traceback)
         return
 
+    def devIsNeeded(self):
+        self._popError(QMessageBox.Warning,
+                      'Warning',
+                      'This device is needed for another device. Cannot remove it.')
+        return
+
     # -- yes/no --
     def _popYesNo(self, title, message):
         # pop a yes/no window
@@ -111,3 +117,8 @@ class Popup():
     def notGettable(self):
         return self._popYesNo('Not gettable',
                               'This device is not gettable. Try as output device anyway?')
+    
+    def askRemoveDevice(self, nickname):
+        msg = 'Are you sure you want to remove ' + nickname + '?'
+        return self._popYesNo('Remove device', msg)
+    

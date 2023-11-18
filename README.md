@@ -1,7 +1,7 @@
 ![HegelLab](./resources/logo_white.png#gh-dark-mode-only)
 ![HegelLab](./resources/logo_black.png#gh-light-mode-only)
 
-## Presentation
+# HegelLab
 My attempt at building an interface for pyHegel.
 
 This is highly inspired by Labber and VsdVg (the original interface on top of pyHegel).
@@ -16,12 +16,14 @@ Main features (not much more than VsdVg, but cleaner):
 - new: renaming devices.
 
 
-Note that sweep and live view for higher than two swept device is currently not supported.
+Note: that sweep and live view for higher than two swept device is currently not supported.
 
-## Packages
+Note 2: you can wrap a device with a Ramping/Scaling/Limit device with `create device`. BUT, it is only possible one time: i.e. you can't wrap a wrapped device. This is a known limitation. I couldn't find a good design to implement infinite wrapping correctly, but if i (or someone) do, i'd like to make it possible.
+
+# Packages
 Need a Python3 installation of PyHegel and the package `pyqtgraph` in version `>=0.12.3`.
 
-## Installation (wip)
+# Installation (wip)
 
 Installation procecure python 3, PyHegel and HegelLab:
 ```py

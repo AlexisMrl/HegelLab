@@ -22,8 +22,9 @@ supported_instruments = {
         "has_address": False,
         "has_slots": False,
         "has_channels": False,
-        "has_sweep_gui": False,
+        "has_loading_gui": False,
         "has_config_gui": False,
+        "has_sweep_gui": False,
         "devices_name": ["rand", "volt", "current"]
     },
     "zurich": {
@@ -31,8 +32,9 @@ supported_instruments = {
         "has_address": True, "address": 'TCPIP::localhost::',
         "has_slots": False,
         "has_channels": False,
-        "has_sweep_gui": False,
+        "has_loading_gui": False,
         "has_config_gui": False,
+        "has_sweep_gui": False,
         "devices_name": []
     },
     "be214x": {
@@ -41,8 +43,9 @@ supported_instruments = {
         "has_slots": True, "slots": [1, 2, 3, 4], # 4 instruments in one
         "has_channels": True, "channels": [1, 2, 3, 4], # 4 channel per instr
         "channel_key": "ch",
-        "has_sweep_gui": False,
+        "has_loading_gui": False,
         "has_config_gui": False,
+        "has_sweep_gui": False,
         "devices_name": ["output_en", "range", "slope", "ramp", "level", "meas_out_volt", "meas_out_current"]
     },
     "dmm344xxA": {
@@ -50,26 +53,34 @@ supported_instruments = {
         "has_address": True, "address":'TCPIP::K-34465A-15472.mshome.net::inst0::INSTR',
         "has_slots": False,
         "has_channels": False,
-        "has_sweep_gui": False,
+        "has_loading_gui": False,
         "has_config_gui": False,
+        "has_sweep_gui": False,
         "devices_name": ["readval", "nplc"]
     },
         
 }
 
 supported_devices = {
-    "Limit device": {
+    "limit": {
+        "name": "Limit device", "key": "limit",
         "pyhegel_class": instruments.LimitDevice,
-        "args": ["Min: ", "Max: "], # (in the right order)
+        "arg_kw": ["min", "max"],
+        "arg_labels": ["Min: ", "Max: "],
     },
-    "Scaling device": {
+    "scaling": {
+        "name": "Scaling device", "key": "scaling",
         "pyhegel_class": instruments.ScalingDevice,
-        "args": ["Scale factor: ", "Offset: "],
+        "arg_kw": ["scale_factor", "offset"],
+        "arg_labels": ["Scale factor: ", "Offset: "],
     },
-    "Ramp device": {
+    "ramp": {
+        "name": "Ramp device", "key": "ramp",
         "pyhegel_class": instruments.RampDevice,
-        "args": ["Rate: ", "Interval: "],
+        "arg_kw": ["rate", "interval"],
+        "arg_labels": ["Rate: ", "Interval: "],
     },
+    # "Average device": if needed, one day
 }
 
 class HegelLab():
@@ -109,8 +120,8 @@ class HegelLab():
         self.view_rack.show()
         self.view_rack.raise_()
 
-    def showDisplay(self):
-        self.view_display.show()
+    def showDisplay(self, dual=None):
+        self.view_display.show_(dual)
         self.view_display.raise_()
     
     def close(self):
@@ -137,7 +148,7 @@ class HegelLab():
 
     # -- RACK --
 
-    def checkInstrLoadingName(self, name):
+    def checkInstrNickname(self, name):
         # check if the loading name is already used
         i, base = 1, name
         while name in self.gui_instruments.keys():
@@ -145,7 +156,7 @@ class HegelLab():
             i += 1
         return name
     
-    def checkDevLoadingName(self, name, gui_instr):
+    def checkDevNickname(self, name, gui_instr):
         # check if the loading name is already used
         i, base = 1, name
         while name in gui_instr.gui_devices.keys():
@@ -156,9 +167,10 @@ class HegelLab():
     def loadGuiInstrument(self, gui_instr):
         # load a GuiInstrument:
         # - make sure the nickname is unique
-        gui_instr.nickname = self.checkInstrLoadingName(gui_instr.nickname)
+        gui_instr.nickname = self.checkInstrNickname(gui_instr.nickname)
         # - try load the pyHegel instrument
         try:
+            # -- if no loading gui
             kwargs = {}
             if gui_instr.slot is not None:
                 kwargs['slot'] = gui_instr.slot
@@ -166,6 +178,8 @@ class HegelLab():
                                                  gui_instr.instr_cls,
                                                  gui_instr.address,
                                                  **kwargs)
+            # else: give the responsability to the loading gui:
+            # it must return a pyHegel instrument
         except Exception as e:
             tb_str = ''.join(traceback.format_tb(e.__traceback__))
             self.pop.instrLoadError(e, tb_str)
@@ -213,11 +227,30 @@ class HegelLab():
         for dev in gui_instr.gui_devices.values():
             self.view_main.gui_removeDevice(dev)
         self.view_rack.gui_removeGuiInstrument(gui_instr)
+        for dev in gui_instr.gui_devices.values():
+            self.view_main.gui_removeDevice(dev)
         del self.gui_instruments[gui_instr.nickname]
+    
+    def removeGuiDevice(self, gui_dev):
+        if len(gui_dev.needed_by) > 0:
+            self.pop.devIsNeeded(); return
+        if self.pop.askRemoveDevice(gui_dev.getDisplayName('long')) == False:
+            return
+        # update dependencies
+        for dev_name in gui_dev.needs:
+            needed_gui_dev = gui_dev.parent.getGuiDevByDevName(dev_name)
+            needed_gui_dev.needed_by.remove(gui_dev.dev_name)
+            needed_gui_dev.hide = False # not sure, feature wise
+        gui_instr = gui_dev.parent
+        gui_instr.gui_devices.pop(gui_dev.nickname)
+        self.view_rack.gui_updateGuiInstrument(gui_instr)
+        self.view_main.gui_removeDevice(gui_dev)
+        del gui_dev
             
     def getValue(self, gui_dev):
         # get the value of the GuiDevice and update the gui
         value = self.model.getValue(gui_dev.getPhDev())
+        gui_dev.cache_value = value
         self.view_rack.gui_updateDeviceValue(gui_dev, value)
     
     def setValue(self, gui_dev, val):
@@ -231,28 +264,48 @@ class HegelLab():
         self.view_rack.gui_updateDeviceValue(gui_dev, val)
         self.view_rack.win_set.close()
     
-    def createDevice(self, gui_dev, dev_type_name, args):
-        # create a device in the instrument
-        # dev_type: instruments.RampingDevice, instruments.ScalingDevice
-        #dev_settings = self.supported_devices[dev_type_name]
+    def createWrapDevice(self,
+                         base_gui_dev,
+                         dev_type,
+                         ph_kwargs,
+                         gui_dev_nickname,
+                         base_hide):
 
-        #dev_cls = dev_settings['pyhegel_class']
-        #name = dev_cls.__name__ + '(' + gui_dev.name + ')'
-        #display_name = self.makeGuiDevName(gui_dev.parent.instr_name, name)
-        #ph_dev = self.model.makeDevice(gui_dev.ph_dev,
-                                       #dev_settings['pyhegel_class'],
-                                       #args)
-        #new_dev = GuiDevice(display_name, name, gui_dev.parent)
-        #new_dev.ph_dev = ph_dev
-        #new_dev.is_extra = True
-        #new_dev.extra_type = dev_cls
-        #new_dev.extra_args = args
-        #new_dev.parent.gui_extra_devices.append(new_dev)
-        pass
+        ph_class = self.supported_devices[dev_type]['pyhegel_class']
+        dev_name = ph_class.__name__ + '_' + base_gui_dev.dev_name
+        try:
+            new_ph_dev = self.model.makeDevice(
+                                            base_gui_dev.getPhDev(),
+                                            dev_name,
+                                            ph_class,
+                                            ph_kwargs,
+                                            base_gui_dev.parent.ph_instr)
+        except Exception as e:
+            tb_str = ''.join(traceback.format_tb(e.__traceback__))
+            self.pop.devLoadError(e, tb_str)
+            return
+
+        base_gui_dev.hide = base_hide
+        # create the host GuiDevice
+        gui_instr = base_gui_dev.parent
+        nickname = self.checkDevNickname(gui_dev_nickname, gui_instr)
+        gui_dev = GuiDevice(nickname, dev_name, gui_instr)
+
+        gui_dev.ph_dev = new_ph_dev
+        gui_dev.type = base_gui_dev.type
+        gui_dev.needs.append(base_gui_dev.dev_name)
+        gui_dev.extra_type = dev_type
+        gui_dev.extra_args = ph_kwargs
+
+        gui_instr.gui_devices[nickname] = gui_dev
+        base_gui_dev.needed_by.append(gui_dev.dev_name)
+
+        # view
+        self.view_rack.gui_updateGuiInstrument(gui_instr)
 
     def renameDevice(self, gui_dev, new_nickname):
         gui_dev = gui_dev.parent.gui_devices.pop(gui_dev.nickname) # remove first
-        new_nickname = self.checkDevLoadingName(new_nickname, gui_dev.parent)
+        new_nickname = self.checkDevNickname(new_nickname, gui_dev.parent)
         gui_dev.parent.gui_devices[new_nickname] = gui_dev
         gui_dev.nickname = new_nickname
         self.view_main.gui_renameDevice(gui_dev)
@@ -437,7 +490,6 @@ class HegelLab():
         # called by the main window
         self.loop_control.abort_enabled = True
         self.loop_control.pause_enabled = False # in case of Pause->Abort
-        self.view_main.gui_sweepFinished()
 
 
 

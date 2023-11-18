@@ -33,6 +33,8 @@ class Model():
         gettable = True if dev._getdev_p is not None else False
         return (settable, gettable)
     
-    def makeDevice(self, dev, cls, args):
-        dev = cls(*args)
-        return dev
+    def makeDevice(self, base_dev, name, cls, kwargs, parent_instr):
+        base_dev = cls(base_dev, **kwargs)
+        base_dev.instr = parent_instr
+        base_dev.name = name
+        return base_dev

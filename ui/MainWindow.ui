@@ -22,7 +22,7 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
-        <widget class="Tree" name="tree_out">
+        <widget class="TreeWidget" name="tree_out">
          <column>
           <property name="text">
            <string>Name</string>
@@ -67,7 +67,7 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
-        <widget class="Tree" name="tree_log">
+        <widget class="TreeWidget" name="tree_log">
          <column>
           <property name="text">
            <string>Name</string>
@@ -106,7 +106,7 @@
      </widget>
     </item>
     <item row="0" column="3">
-     <widget class="QGroupBox" name="groupBox">
+     <widget class="QGroupBox" name="gb_comment">
       <property name="title">
        <string>Comment</string>
       </property>
@@ -124,7 +124,7 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
-        <widget class="Tree" name="tree_sw">
+        <widget class="TreeWidget" name="tree_sw">
          <column>
           <property name="text">
            <string>Name</string>
@@ -176,9 +176,9 @@
      </widget>
     </item>
     <item row="1" column="3">
-     <widget class="QGroupBox" name="gb_sweep_2">
+     <widget class="QGroupBox" name="gb_param">
       <property name="title">
-       <string>Sweep</string>
+       <string>Parameters</string>
       </property>
       <layout class="QFormLayout" name="formLayout">
        <item row="0" column="0">
@@ -232,9 +232,6 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
-   <property name="windowTitle">
-    <string>toolBar</string>
-   </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
    </attribute>
@@ -242,7 +239,6 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionInstruments"/>
-   <addaction name="actionDisplay"/>
    <addaction name="separator"/>
    <addaction name="actionStartSweep"/>
   </widget>
@@ -261,7 +257,7 @@
   <action name="actionDisplay">
    <property name="icon">
     <iconset>
-     <normaloff>../resources/display.svg</normaloff>../resources/display.svg</iconset>
+     <normaloff>../resources/display1.svg</normaloff>../resources/display1.svg</iconset>
    </property>
    <property name="text">
     <string>Display</string>
@@ -290,9 +286,9 @@
    <header>pyHegel.gui.ScientificSpinBox</header>
   </customwidget>
   <customwidget>
-   <class>Tree</class>
+   <class>TreeWidget</class>
    <extends>QTreeWidget</extends>
-   <header>widgets/Tree.h</header>
+   <header>widgets/TreeWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
