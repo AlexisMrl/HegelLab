@@ -3,16 +3,16 @@ from pyHegel import instruments
 
 class Model():
     # The model is the only one doing the pyHegel commands
-    # except for the sweep thread
-    
-    def loadInstrument(self, nickname, cls, address, **kwargs):
-        instr = cls(address, **kwargs)
-        instr.header.set(nickname)
-        return instr
+    # except for the sweep thread and loading drivers
 
     def getDevice(self, instr, name):
         dev = getattr(instr, name)
         return dev
+    
+    def getChoices(self, dev):
+        if hasattr(dev, 'choices'):
+            return dev.choices
+        else: return None
 
     def getValue(self, dev):
         return c.get(dev)

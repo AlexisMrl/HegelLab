@@ -57,6 +57,12 @@ class Display(QMainWindow):
         self.cb_cmap.setCurrentIndex(1)
         self.toolbar.addWidget(self.cb_cmap)
         self.toolbar.addSeparator()
+        # hide target lines
+        self.btn_target_lines = self.toolbar.addAction(QIcon('resources/target.svg'), 'target lines')
+        self.btn_target_lines.setCheckable(True)
+        self.btn_target_lines.setChecked(True)
+        self.btn_target_lines.triggered.connect(self.toggleTargetLines)
+        self.toolbar.addSeparator()
         # link
         self.btn_link = self.toolbar.addAction('link')
         self.btn_link.setCheckable(True)
@@ -100,9 +106,7 @@ class Display(QMainWindow):
     def cMapChanged(self):
         colormap = self.cb_cmap.currentData()
         self.displays[0].bar.setColorMap(colormap)
-        self.displays[0].updateBar()
         self.displays[1].bar.setColorMap(colormap)
-        self.displays[1].updateBar()
     
     def toggleGraphs(self, boo):
         self.displays[0].horizontal.setVisible(boo)
@@ -118,6 +122,9 @@ class Display(QMainWindow):
             self.displays[1].main.setXLink(None)
             self.displays[1].main.setYLink(None)
     
+    def toggleTargetLines(self, boo):
+        self.displays[0].targets_toggleLines(boo)
+        self.displays[1].targets_toggleLines(boo)
 
     # -- utils --
     def pixmapFromCmName(self, name):

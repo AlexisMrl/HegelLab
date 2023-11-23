@@ -7,7 +7,6 @@ from PyQt5.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, \
                             QSplitter, QGridLayout, QListWidget, \
                             QListWidgetItem
 from PyQt5.QtGui import QFont, QFontDatabase
-from widgets.DropLabel import DropLabel
 from src.GuiInstrument import GuiInstrument, GuiDevice
 from pyHegel.gui.ScientificSpinBox import PyScientificSpinBox
 
@@ -107,9 +106,16 @@ class Rack(QMainWindow):
         self.win_set.setWindowIcon(QtGui.QIcon('resources/instruments.svg'))
         wid = QWidget(); self.win_set.setCentralWidget(wid)
         layout = QVBoxLayout(); wid.setLayout(layout)
-        lbl = QLabel('New value for: ' + gui_dev.getDisplayName('long', full=True)); layout.addWidget(lbl)
-        le_value = PyScientificSpinBox()
-        layout.addWidget(le_value)
+        lbl = QLabel('New value for: ' + gui_dev.getDisplayName('long')); layout.addWidget(lbl)
+        if gui_dev.ph_choice is not None:
+            value_wid = QComboBox()
+            for choice in gui_dev.ph_choice:
+                value_wid.addItem(str(choice), choice)
+            value_wid.value = value_wid.currentData
+            layout.addWidget(value_wid)
+        else: # spinbox by default
+            value_wid = PyScientificSpinBox()
+            layout.addWidget(value_wid)
         bt_ok = QPushButton('Set')
         bt_cancel = QPushButton('Cancel')
         Hlayout = QHBoxLayout()
@@ -117,8 +123,8 @@ class Rack(QMainWindow):
         Hlayout.addWidget(bt_cancel)
         layout.addLayout(Hlayout)
         def okClicked():
-            value = le_value.value()
-            self.lab.setValue(gui_dev, value)
+            to_set = value_wid.value()
+            self.lab.setValue(gui_dev, to_set)
         def cancelClicked():
             self.win_set.close()
         bt_ok.clicked.connect(okClicked)
@@ -221,7 +227,7 @@ class Rack(QMainWindow):
         self.win_rename.setWindowIcon(QtGui.QIcon('resources/instruments.svg'))
         wid = QWidget(); self.win_rename.setCentralWidget(wid)
         layout = QVBoxLayout(); wid.setLayout(layout)
-        lbl = QLabel('New name for: ' + data.getDisplayName('short', full=True)); layout.addWidget(lbl)
+        lbl = QLabel('New name for: ' + data.getDisplayName('short')); layout.addWidget(lbl)
         le_value = QLineEdit()
         le_value.setText(data.nickname)
         layout.addWidget(le_value)
@@ -233,7 +239,7 @@ class Rack(QMainWindow):
         layout.addLayout(Hlayout)
         def okClicked():
             value = le_value.text()
-            selected_item.setText(0, data.getDisplayName('short', full=True))
+            selected_item.setText(0, data.getDisplayName('short'))
             self.lab.renameDevice(data, value)
             self.win_rename.close()
         def cancelClicked():
@@ -261,7 +267,7 @@ class Rack(QMainWindow):
 
 
         gui_dev = self.tree.getData(self.tree.selectedItem())
-        wid.lbl_base_dev.setText(gui_dev.getDisplayName('short', full=True))
+        wid.lbl_base_dev.setText(gui_dev.getDisplayName('short'))
         wid.setWindowTitle('Create device for ' + gui_dev.parent.getDisplayName())
 
         # fill list widget:
@@ -276,6 +282,8 @@ class Rack(QMainWindow):
             settings = item.data(Qt.UserRole)
             wid.lbl_arg1.setText(settings['arg_labels'][0])
             wid.lbl_arg2.setText(settings['arg_labels'][1])
+            wid.sb_arg1.setValue(settings['arg_defaults'][0])
+            wid.sb_arg2.setValue(settings['arg_defaults'][1])
             wid.le_nickname.setText(settings['key']+'_'+gui_dev.nickname)
         wid.list.currentItemChanged.connect(onListItemChanged)
         wid.list.setCurrentRow(0)
@@ -311,8 +319,9 @@ class Rack(QMainWindow):
             if gui_dev.hide: continue
             dev_item = QTreeWidgetItem(instr_item)
             self.tree.setData(dev_item, gui_dev)
-            dev_item.setText(0, gui_dev.getDisplayName('short', full=True))
+            dev_item.setText(0, gui_dev.getDisplayName('short'))
             dev_item.setText(1, str(gui_dev.cache_value) if gui_dev.cache_value is not None else '')
+            dev_item.setText(2, str(gui_dev.extra_args) if gui_dev.extra_args is not None else '')
             dev_item.setText(3, {(True, True): 'set/get', (True, False): 'set', (False, True): 'get', (False, False): '?'}[gui_dev.type])
             dev_item.setText(4, {True: '', False: 'Not found'}[gui_dev.ph_dev is not None])
     
@@ -348,7 +357,7 @@ class Rack(QMainWindow):
     def gui_renameDevice(self, gui_dev):
         # rename the device item in self.tree
         dev_item = self.tree.findItemByData(gui_dev)
-        dev_item.setText(0, gui_dev.getDisplayName('short', full=True))
+        dev_item.setText(0, gui_dev.getDisplayName('short'))
     
     def gui_updateDeviceValue(self, gui_dev, value):
         # update the value of the item corresponding to gui_dev

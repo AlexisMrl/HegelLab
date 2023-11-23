@@ -3,7 +3,7 @@
    viewBox="0 0 576 512"
    version="1.1"
    id="svg1"
-   sodipodi:docname="graphs.svg"
+   sodipodi:docname="target.svg"
    inkscape:version="1.3.1 (91b66b0783, 2023-11-16)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -303,7 +303,7 @@
        id="path-effect18-8"
        is_visible="true"
        lpeversion="1"
-       nodesatellites_param="F,0,0,1,0,5,0,1 @ F,0,0,1,0,5,0,1 @ F,0,0,1,0,5,0,1 @ F,0,0,1,0,5,0,1"
+       nodesatellites_param="F,1,0,1,0,0.05,0,1 @ F,1,0,1,0,0.025,0,1 @ F,1,0,1,0,0.05,0,1 @ F,1,0,1,0,0.025,0,1"
        radius="5"
        unit="px"
        method="auto"
@@ -325,9 +325,9 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="0.70710678"
-     inkscape:cx="392.44426"
-     inkscape:cy="300.52038"
+     inkscape:zoom="1"
+     inkscape:cx="192"
+     inkscape:cy="259.5"
      inkscape:window-width="1920"
      inkscape:window-height="991"
      inkscape:window-x="-9"
@@ -353,35 +353,18 @@
        visible="false" />
   </sodipodi:namedview>
   <!--! Font Awesome Pro 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. -->
+  <circle
+     style="fill:none;stroke:#333333;stroke-width:7.74778;stroke-dasharray:none;stroke-opacity:0.15"
+     id="path1"
+     cx="288"
+     cy="256"
+     r="120.73624" />
   <path
-     style="fill:#323232;fill-opacity:1;stroke:none;stroke-width:4.63502;stroke-dasharray:none;stroke-opacity:1"
-     id="rect17"
-     width="100"
-     height="200"
-     x="472.79279"
-     y="87.639648"
-     inkscape:path-effect="#path-effect18"
-     sodipodi:type="rect"
-     d="m 477.79279,87.639648 90,0 a 5,5 45 0 1 5,5 V 282.63965 a 5,5 135 0 1 -5,5 h -90 a 5,5 45 0 1 -5,-5 V 92.639648 a 5,5 135 0 1 5,-5 z"
-     transform="matrix(1.2285608,0,0,0.97046686,-223.34911,18.364101)" />
+     style="fill:none;fill-opacity:1;stroke:#333333;stroke-width:12.6556;stroke-dasharray:none;stroke-opacity:1"
+     d="m 288,15.25 v 481.5"
+     id="path2" />
   <path
-     style="fill:#323232;fill-opacity:1;stroke:none;stroke-width:4.42501;stroke-dasharray:none;stroke-opacity:1"
-     id="rect17-0"
-     width="100"
-     height="200"
-     x="472.79279"
-     y="87.639648"
-     inkscape:path-effect="#path-effect18-8"
-     sodipodi:type="rect"
-     d="m 477.79279,87.639648 90,0 a 5,5 45 0 1 5,5 V 282.63965 a 5,5 135 0 1 -5,5 h -90 a 5,5 45 0 1 -5,-5 V 92.639648 a 5,5 135 0 1 5,-5 z"
-     transform="matrix(0,1.0647527,-1.2285608,0,449.02116,-201.29813)" />
-  <rect
-     style="fill:#323232;fill-opacity:0.15;stroke:none;stroke-width:5.061;stroke-dasharray:none;stroke-opacity:1"
-     id="rect19"
-     width="245.71214"
-     height="187.02228"
-     x="95.638344"
-     y="103.41547"
-     rx="5.2445421"
-     ry="5.2770214" />
+     style="fill:none;fill-opacity:1;stroke:#333333;stroke-width:12.6556;stroke-dasharray:none;stroke-opacity:1"
+     d="m 47.25,256 h 481.5"
+     id="path2-6" />
 </svg>

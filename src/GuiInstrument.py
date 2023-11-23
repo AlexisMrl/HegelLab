@@ -2,19 +2,20 @@
 class GuiInstrument():
     # class attached to every item that represent an instr
     
-    def __init__(self, nickname, instr_name, instr_cls, address, slot=None):
+    def __init__(self, nickname, instr_name, instr_cls, instr_driver, address, slot=None):
 
         self.nickname = nickname
         self.instr_name = instr_name
         self.instr_cls = instr_cls
+        self.instr_driver = instr_driver
         self.address = address
         self.slot = slot
 
         self.ph_instr = None
         self.gui_devices = {} # {nickname: GuiDevice}
     
-    def getDisplayName(self, type='', full=False):
-        # args for consistency with GuiDevice == USELESS
+    def getDisplayName(self, type=''):
+        # type for consistency with GuiDevice
         if self.nickname != self.instr_name:
             return self.nickname + ' (' + self.instr_name + ')'
         else:
@@ -45,14 +46,15 @@ class GuiDevice():
         self.hide = False # if True, the device is not shown in the gui
         self.ph_dict = None # if the device is a tuple, holds the kwargs
         # for ramping and scaling devices
-        self.needed_by = [] # list of dev_name: device that needs this one
-        self.needs = [] # list of dev_name: device that this one needs
-        self.extra_type = None # key for supported_devices
+        self.needed_by = [] # list of gui_dev: device that needs this one
+        self.needs = [] # list of gui_dev: device that this one needs
+        self.extra_type = None # key of supported_devices
         self.extra_args = None # {arg_name: arg_value}
 
 
         # not kept when saving
         self.ph_dev = None
+        self.ph_choice = None # ChoiceString from pyHegel
         self.type = (False, False) # (settable, gettable)
         self.sweep = [None, None, None] # [start, stop, npts]
         self.cache_value = None # a value to cache the last value read
@@ -62,13 +64,12 @@ class GuiDevice():
         self.values = None
         self.sw_idx = None # SweepIdxIter object
     
-    def getDisplayName(self, type, full=False):
+    def getDisplayName(self, type='short'):
         # type: 'short' or 'long'
-        #   short: nickname + ph_dev name
-        #   long: instr name + nickname + ph_dev name
-        # full: if True, add the ph_dict to the name
+        #   short: nickname + dev_name
+        #   long: instr_name + nickname + dev_name
         dev_name = self.dev_name
-        if full and self.ph_dict is not None:
+        if self.ph_dict is not None:
             str_ars = [str(k) + '=' + str(v) for k, v in self.ph_dict.items()]
             dev_name = dev_name + ', ' + ''.join(str_ars)
         if type=='short':

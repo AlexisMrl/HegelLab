@@ -51,6 +51,7 @@ class Main(QMainWindow):
         self.statusBar().addWidget(self.sweep_iteration)
         self.sweep_estimation = QLabel()
         self.statusBar().addWidget(self.sweep_estimation)
+
         # width for first column for tree:
         self.tree_sw.setColumnWidth(0, 200)
         # before_wait:
@@ -126,61 +127,11 @@ class Main(QMainWindow):
         else:
             event.ignore()
     
-    # -- windows --
-    def window_configSweep(self, gui_dev):
-        # minimal window for defining sweep start, stop, step:
-        display_name = gui_dev.getDisplayName('long', full=True)
-        self.win_sw_setup.setWindowTitle('Setup sweep ' + display_name)
-        self.win_sw_setup.setWindowIcon(QtGui.QIcon('resources/favicon/favicon.png'))
-        wid = QWidget(); self.win_sw_setup.setCentralWidget(wid)
-        layout = QGridLayout(); wid.setLayout(layout)
-        
-        # widgets:
-        label_start = QLabel('Start:')
-        label_stop = QLabel('Stop:')
-        label_step = QLabel('# pts:')
-        spin_start = ScientificSpinBox.PyScientificSpinBox()
-        spin_stop = ScientificSpinBox.PyScientificSpinBox()
-        spin_npts = QSpinBox()
-        spin_npts.setMaximum(1000000)
-        ok_button = QPushButton('Ok')
-        
-        # set values if not None:
-        sweep_values = gui_dev.sweep
-        if sweep_values[0] is not None:
-            spin_start.setValue(sweep_values[0])
-        if sweep_values[1] is not None:
-            spin_stop.setValue(sweep_values[1])
-        if sweep_values[2] is not None:
-            spin_npts.setValue(sweep_values[2])
-        
-        # add to layout:
-        layout.addWidget(label_start, 0, 0)
-        layout.addWidget(label_stop, 1, 0)
-        layout.addWidget(label_step, 2, 0)
-        layout.addWidget(spin_start, 0, 1)
-        layout.addWidget(spin_stop, 1, 1)
-        layout.addWidget(spin_npts, 2, 1)
-        layout.addWidget(ok_button, 3, 1)
-        
-        # connect signals:
-        ok_button.clicked.connect(lambda: self.lab.setSweepValues(
-            gui_dev,
-            spin_start.value(),
-            spin_stop.value(),
-            spin_npts.value(),
-        ))
-        # on close:
-        self.win_sw_setup.closeEvent = lambda event: self.setEnabled(True)
-
-        self.win_sw_setup.show()
-    # -- end windows --
-    
     # -- gui -- (called by the lab)
     def _gui_makeItem(self, tree, gui_dev):
         item = QTreeWidgetItem()
         item.setChildIndicatorPolicy(QTreeWidgetItem.DontShowIndicatorWhenChildless)
-        item.setText(0, gui_dev.getDisplayName('long', full=True))
+        item.setText(0, gui_dev.getDisplayName('long'))
         tree.setData(item, gui_dev)
         tree.addTopLevelItem(item)
         
@@ -199,13 +150,13 @@ class Main(QMainWindow):
     def gui_renameDevice(self, gui_dev):
         item = self.tree_sw.findItemByData(gui_dev)
         if item is not None:
-            item.setText(0, gui_dev.getDisplayName('long', full=True))
+            item.setText(0, gui_dev.getDisplayName('long'))
         item = self.tree_out.findItemByData(gui_dev)
         if item is not None:
-            item.setText(0, gui_dev.getDisplayName('long', full=True))
+            item.setText(0, gui_dev.getDisplayName('long'))
         item = self.tree_log.findItemByData(gui_dev)
         if item is not None:
-            item.setText(0, gui_dev.getDisplayName('long', full=True))
+            item.setText(0, gui_dev.getDisplayName('long'))
     
     def gui_updateSweepValues(self, gui_dev):
         # set sweep values to self.tree_sw.selectedItem()
@@ -232,6 +183,7 @@ class Main(QMainWindow):
         self.gb_log.setEnabled(False)
         self.gb_param.setEnabled(False)
         self.gb_comment.setEnabled(False)
+        self.filename_edit.setEnabled(False)
         self.sweep_status.setText('Running')
     
     def gui_sweepFinished(self):
@@ -243,6 +195,7 @@ class Main(QMainWindow):
         self.gb_log.setEnabled(True)
         self.gb_param.setEnabled(True)
         self.gb_comment.setEnabled(True)
+        self.filename_edit.setEnabled(True)
         # Reset pause button (in case of Pause->Abort):
         if self.pause_button.text() == 'Resume':
             self.gui_sweepResumed()

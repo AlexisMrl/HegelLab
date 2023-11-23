@@ -3,7 +3,7 @@ import sys, traceback
 from PyQt5.QtWidgets import QApplication
 
 from views import Main, Rack, Display
-from src import LoaderSaver, Model, Popup, SweepThread
+from src import LoaderSaver, Model, Popup, SweepThread, Drivers
 from src.GuiInstrument import GuiInstrument, GuiDevice
 from src.SweepIdxIter import IdxIter
 
@@ -22,9 +22,7 @@ supported_instruments = {
         "has_address": False,
         "has_slots": False,
         "has_channels": False,
-        "has_loading_gui": False,
-        "has_config_gui": False,
-        "has_sweep_gui": False,
+        "has_custom_driver": False,
         "devices_name": ["rand", "volt", "current"]
     },
     "zurich": {
@@ -32,9 +30,7 @@ supported_instruments = {
         "has_address": True, "address": 'TCPIP::localhost::',
         "has_slots": False,
         "has_channels": False,
-        "has_loading_gui": False,
-        "has_config_gui": False,
-        "has_sweep_gui": False,
+        "has_custom_driver": False,
         "devices_name": []
     },
     "be214x": {
@@ -43,20 +39,24 @@ supported_instruments = {
         "has_slots": True, "slots": [1, 2, 3, 4], # 4 instruments in one
         "has_channels": True, "channels": [1, 2, 3, 4], # 4 channel per instr
         "channel_key": "ch",
-        "has_loading_gui": False,
-        "has_config_gui": False,
-        "has_sweep_gui": False,
+        "has_custom_driver": False,
         "devices_name": ["output_en", "range", "slope", "ramp", "level", "meas_out_volt", "meas_out_current"]
     },
     "dmm344xxA": {
         "pyhegel_class": instruments.agilent_multi_34410A,
-        "has_address": True, "address":'TCPIP::K-34465A-15472.mshome.net::inst0::INSTR',
+        "has_address": True, "address":'USB0::0x2A8D::0x0101::MY57515472',
         "has_slots": False,
         "has_channels": False,
-        "has_loading_gui": False,
-        "has_config_gui": False,
-        "has_sweep_gui": False,
-        "devices_name": ["readval", "nplc"]
+        "has_custom_driver": False,
+        "devices_name": ["mode", "autorange", "sample_count", "nplc", "readval"]
+    },
+    "ami430": {
+        "pyhegel_class": instruments.AmericanMagnetics_vector,
+        "has_address": True, "address":'TCPIP::{ip_name}-AX.local::7180::socket',
+        "has_slots": False,
+        "has_channels": False,
+        "has_custom_driver": True, "driver": Drivers.ami430,
+        "devices_name": []
     },
         
 }
@@ -67,18 +67,21 @@ supported_devices = {
         "pyhegel_class": instruments.LimitDevice,
         "arg_kw": ["min", "max"],
         "arg_labels": ["Min: ", "Max: "],
+        "arg_defaults": [0, 1],
     },
     "scaling": {
         "name": "Scaling device", "key": "scaling",
         "pyhegel_class": instruments.ScalingDevice,
         "arg_kw": ["scale_factor", "offset"],
         "arg_labels": ["Scale factor: ", "Offset: "],
+        "arg_defaults": [1, 0],
     },
     "ramp": {
         "name": "Ramp device", "key": "ramp",
         "pyhegel_class": instruments.RampDevice,
-        "arg_kw": ["rate", "interval"],
-        "arg_labels": ["Rate: ", "Interval: "],
+        "arg_kw": ["rate", 'internal_dt'],
+        "arg_labels": ["Rate (unit/s): ", 'Internale dt (s): '],
+        "arg_defaults": [1, 0.1],
     },
     # "Average device": if needed, one day
 }
@@ -174,12 +177,10 @@ class HegelLab():
             kwargs = {}
             if gui_instr.slot is not None:
                 kwargs['slot'] = gui_instr.slot
-            gui_instr.ph_instr = self.model.loadInstrument(gui_instr.nickname,
+            gui_instr.ph_instr = gui_instr.instr_driver.load(gui_instr.nickname,
                                                  gui_instr.instr_cls,
                                                  gui_instr.address,
                                                  **kwargs)
-            # else: give the responsability to the loading gui:
-            # it must return a pyHegel instrument
         except Exception as e:
             tb_str = ''.join(traceback.format_tb(e.__traceback__))
             self.pop.instrLoadError(e, tb_str)
@@ -197,6 +198,7 @@ class HegelLab():
             try:
                 gui_dev.ph_dev = self.model.getDevice(gui_instr.ph_instr, gui_dev.dev_name)
                 gui_dev.type = self.model.devType(gui_dev.ph_dev)
+                gui_dev.ph_choice = self.model.getChoices(gui_dev.ph_dev)
             except Exception as e:
                 tb_str = ''.join(traceback.format_tb(e.__traceback__))
                 self.pop.devLoadError(e, tb_str)
@@ -207,7 +209,9 @@ class HegelLab():
         # build GuiInstrument and populate dvices, but no ph_instr nor ph_dev
         settings = supported_instruments[instr_name]
         instr_cls = settings['pyhegel_class']
-        gui_instr = GuiInstrument(nickname, instr_name, instr_cls, addr, slot)
+        instr_driver = settings['driver'] if settings['has_custom_driver'] else Drivers.Default
+        gui_instr = GuiInstrument(nickname, instr_name, instr_cls, instr_driver, addr, slot)
+        print(addr)
         for dev_name in settings['devices_name']:
             if settings['has_channels']:
                 for ch in settings['channels']:
@@ -237,10 +241,9 @@ class HegelLab():
         if self.pop.askRemoveDevice(gui_dev.getDisplayName('long')) == False:
             return
         # update dependencies
-        for dev_name in gui_dev.needs:
-            needed_gui_dev = gui_dev.parent.getGuiDevByDevName(dev_name)
-            needed_gui_dev.needed_by.remove(gui_dev.dev_name)
-            needed_gui_dev.hide = False # not sure, feature wise
+        for needed_gui_dev in gui_dev.needs:
+            needed_gui_dev.needed_by.remove(gui_dev)
+            needed_gui_dev.hide = False
         gui_instr = gui_dev.parent
         gui_instr.gui_devices.pop(gui_dev.nickname)
         self.view_rack.gui_updateGuiInstrument(gui_instr)
@@ -272,7 +275,10 @@ class HegelLab():
                          base_hide):
 
         ph_class = self.supported_devices[dev_type]['pyhegel_class']
-        dev_name = ph_class.__name__ + '_' + base_gui_dev.dev_name
+        dev_name = ph_class.__name__ + '_' \
+                   + base_gui_dev.dev_name
+        if base_gui_dev.ph_dict is not None:
+            dev_name += '_' + str(base_gui_dev.ph_dict.get('ch',''))
         try:
             new_ph_dev = self.model.makeDevice(
                                             base_gui_dev.getPhDev(),
@@ -293,12 +299,12 @@ class HegelLab():
 
         gui_dev.ph_dev = new_ph_dev
         gui_dev.type = base_gui_dev.type
-        gui_dev.needs.append(base_gui_dev.dev_name)
+        gui_dev.needs.append(base_gui_dev)
         gui_dev.extra_type = dev_type
         gui_dev.extra_args = ph_kwargs
 
         gui_instr.gui_devices[nickname] = gui_dev
-        base_gui_dev.needed_by.append(gui_dev.dev_name)
+        base_gui_dev.needed_by.append(gui_dev)
 
         # view
         self.view_rack.gui_updateGuiInstrument(gui_instr)
@@ -342,16 +348,13 @@ class HegelLab():
     
     def showSweepConfig(self, gui_dev):
         # launch the config window for gui_dev sweep device
-        self.view_main.setEnabled(False)
-        # TODO: handle custom gui
-        self.view_main.window_configSweep(gui_dev)
+        driver_cls = gui_dev.parent.instr_driver
+        driver_cls.sweep(self, gui_dev)
     
     def setSweepValues(self, gui_dev, start, stop, npts):
         # set sweep values for gui_dev and update the gui
         gui_dev.sweep = [start, stop, npts]
         self.view_main.gui_updateSweepValues(gui_dev)
-        self.view_main.win_sw_setup.close()
-        self.view_main.setEnabled(True)
     
 
     # -- SWEEP THREAD --
@@ -386,18 +389,18 @@ class HegelLab():
         # generate the lists for kwargs
         ph_sw_devs, start, stop, npts = [], [], [], []
         for dev in gui_sw_devs:
-            ph_sw_devs.append(dev.ph_dev)
+            ph_sw_devs.append(dev.getPhDev())
             start.append(dev.sweep[0])
             stop.append(dev.sweep[1])
             npts.append(dev.sweep[2])
             
         ph_out_devs = []
         for dev in gui_out_devs:
-            ph_out_devs.append(dev.ph_dev)
+            ph_out_devs.append(dev.getPhDev())
 
         ph_log_devs = []
         for dev in gui_log_devs:
-            ph_log_devs.append(dev.ph_dev)
+            ph_log_devs.append(dev.getPhDev())
         
         return ph_sw_devs, start, stop, npts, ph_out_devs, ph_log_devs
 
