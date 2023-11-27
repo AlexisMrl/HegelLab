@@ -1,9 +1,6 @@
-from PyQt5.QtWidgets import QMainWindow, QLabel, QComboBox, \
-                            QToolBar, QPushButton, QAction, \
-                            QMenu
-from PyQt5.QtGui import QIcon, QPixmap, QImage, qRgb
+from PyQt5.QtWidgets import QMainWindow, QLabel, QComboBox, QToolBar
 from PyQt5.QtCore import QPoint
-from PyQt5 import uic, QtGui, QtCore
+from PyQt5 import uic, QtCore
 import pyqtgraph as pg
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
@@ -11,19 +8,20 @@ from pyHegel.gui import ScientificSpinBox
 
 
 class DisplayWidget(QMainWindow):
-
     def init(self):
-        self.filter_state = ['no', 1] # (<'no', 'dx', 'dy'>, sigma)
-        #self.raw_data = np.random.rand(10, 10)  # raw data, before derivative and transpose
-        self.raw_data = np.full((10,10), np.nan)  # raw data, before derivative and transpose
-        self.image_rect = (-5, -5, 10, 10) # rectangle for transform: x, y, w, h
-        self.axes = {'x': np.linspace(-5, 5, 10), 'y': np.linspace(-5, 5, 10)}
-        self.labels = {'x': 'x sweep', 'y': 'y sweep', 'out': 'out'}
-        self.int_color = 0 # color for targets
+        self.filter_state = ["no", 1]  # (<'no', 'dx', 'dy'>, sigma)
+        # self.raw_data = np.random.rand(10, 10)  # raw data, before derivative and transpose
+        self.raw_data = np.full(
+            (10, 10), np.nan
+        )  # raw data, before derivative and transpose
+        self.image_rect = (-5, -5, 10, 10)  # rectangle for transform: x, y, w, h
+        self.axes = {"x": np.linspace(-5, 5, 10), "y": np.linspace(-5, 5, 10)}
+        self.labels = {"x": "x sweep", "y": "y sweep", "out": "out"}
+        self.int_color = 0  # color for targets
 
     def __init__(self, view):
         super(DisplayWidget, self).__init__()
-        uic.loadUi('ui/DisplayWindow.ui', self)
+        uic.loadUi("ui/DisplayWindow.ui", self)
         self.view = view
 
         # -- setting up the window --
@@ -33,7 +31,7 @@ class DisplayWidget(QMainWindow):
         self.main.hideButtons()
         self.image = pg.ImageItem()
         self.main.addItem(self.image)
-        
+
         # vertical plot
         self.vertical = self.graph.addPlot(row=0, col=1)
         self.vertical.hideButtons()
@@ -59,58 +57,67 @@ class DisplayWidget(QMainWindow):
         self.toolBar.setFloatable(False)
         self.toolBar2.setFloatable(False)
         # tb1 combobox
-        self.toolBar.addWidget(QLabel('Output:'))
-        self.cb_out = QComboBox(); self.cb_out.setMinimumWidth(250)
+        self.toolBar.addWidget(QLabel("Output:"))
+        self.cb_out = QComboBox()
+        self.cb_out.setMinimumWidth(250)
         self.cb_out.currentIndexChanged.connect(self.onCbOutChanged)
         self.toolBar.addWidget(self.cb_out)
         self.toolBar.addSeparator()
         # tb1 button reset view:
-        self.btn_reset_view = self.toolBar.addAction('Reset view')
+        self.btn_reset_view = self.toolBar.addAction("Reset view")
         self.btn_reset_view.triggered.connect(self.resetView)
         # reset cbar
-        self.btn_reset_bar = self.toolBar.addAction('Reset cbar')
+        self.btn_reset_bar = self.toolBar.addAction("Reset cbar")
         self.btn_reset_bar.triggered.connect(self.updateBar)
         # transpose:
-        self.btn_transpose = self.toolBar.addAction('Transpose')
-        self.btn_transpose.setCheckable(True); self.btn_transpose.setChecked(False)
+        self.btn_transpose = self.toolBar.addAction("Transpose")
+        self.btn_transpose.setCheckable(True)
+        self.btn_transpose.setChecked(False)
         self.btn_transpose.triggered.connect(self.onTranspose)
         # cursor toolbutton:
-        #self.btn_cursor = QAction('Cursor')
-        #self.btn_cursor.setCheckable(True)
-        #menu = QMenu()
-        #menu.addAction('Follow mouse')
-        #menu.addAction('Target')
-        #self.btn_cursor.setMenu(menu)
-        #self.toolBar.addAction(self.btn_cursor)
+        # self.btn_cursor = QAction('Cursor')
+        # self.btn_cursor.setCheckable(True)
+        # menu = QMenu()
+        # menu.addAction('Follow mouse')
+        # menu.addAction('Target')
+        # self.btn_cursor.setMenu(menu)
+        # self.toolBar.addAction(self.btn_cursor)
 
         # tb2 combobox derivative:
-        self.toolBar2.addWidget(QLabel('Derivative:'))
+        self.toolBar2.addWidget(QLabel("Derivative:"))
         self.cb_derive = QComboBox()
-        self.cb_derive.addItem('No derivative', 'no')
-        self.cb_derive.addItem('df/dx', 'dx')
-        self.cb_derive.addItem('df/dy', 'dy')
-        self.cb_derive.currentIndexChanged.connect(lambda: self.updateFilter(filter_=self.cb_derive.currentData()))
+        self.cb_derive.addItem("No derivative", "no")
+        self.cb_derive.addItem("df/dx", "dx")
+        self.cb_derive.addItem("df/dy", "dy")
+        self.cb_derive.currentIndexChanged.connect(
+            lambda: self.updateFilter(filter_=self.cb_derive.currentData())
+        )
         self.toolBar2.addWidget(self.cb_derive)
         # sigma
-        self.toolBar2.addWidget(QLabel('Sigma:'))
+        self.toolBar2.addWidget(QLabel("Sigma:"))
         self.sb_sigma = ScientificSpinBox.PyScientificSpinBox()
         self.sb_sigma.setRange(1, 100)
         self.toolBar2.addWidget(self.sb_sigma)
-        self.sb_sigma.valueChanged.connect(lambda: self.updateFilter(sigma=self.sb_sigma.value()))
+        self.sb_sigma.valueChanged.connect(
+            lambda: self.updateFilter(sigma=self.sb_sigma.value())
+        )
         # crosshair/mouse
         self.toolBar2.addSeparator()
-        self.btn_add_crosshair = self.toolBar2.addAction('Add crosshair')
+        self.btn_add_crosshair = self.toolBar2.addAction("Add crosshair")
+
         def onAddCrosshair():
             if len(self.targets) < 5:
                 self.targets.append(Target(self))
+
         self.btn_add_crosshair.triggered.connect(onAddCrosshair)
-        self.btn_remove_crosshair = self.toolBar2.addAction('Remove crosshair')
+        self.btn_remove_crosshair = self.toolBar2.addAction("Remove crosshair")
+
         def onRemoveCrosshair():
             if len(self.targets) > 1:
                 tgt = self.targets.pop()
                 tgt.remove()
-        self.btn_remove_crosshair.triggered.connect(onRemoveCrosshair)
 
+        self.btn_remove_crosshair.triggered.connect(onRemoveCrosshair)
 
         # variables
         self.init()
@@ -118,13 +125,12 @@ class DisplayWidget(QMainWindow):
         self.drawRaw()
         self.updateLabels()
 
-
     # -- core functions --
     def clear(self):
         self.image.clear()
-        self.updateLabels(x='', y='', out='')
+        self.updateLabels(x="", y="", out="")
         self.cb_out.clear()
-    
+
     def resetView(self):
         self.main.autoRange()
         self.horizontal.autoRange()
@@ -138,7 +144,7 @@ class DisplayWidget(QMainWindow):
         self.image.setRect(self.image_rect)
         self.updateBar()
         self.updateTargets()
-    
+
     def drawSweep(self):
         data = self.cb_out.currentData().values
         self.raw_data = data
@@ -150,124 +156,171 @@ class DisplayWidget(QMainWindow):
         # set labels and init axis for side graphs and set target and image rect
 
         if len(sweep_devs) == 1:
-            x_for_horiz = np.linspace(sweep_devs[0].sweep[0], sweep_devs[0].sweep[1], sweep_devs[0].sweep[2])
-            if sweep_devs[0].sweep[1] < sweep_devs[0].sweep[0]: x_for_horiz = np.flip(x_for_horiz) # reversed sweep
+            x_for_horiz = np.linspace(
+                sweep_devs[0].sweep[0], sweep_devs[0].sweep[1], sweep_devs[0].sweep[2]
+            )
+            if sweep_devs[0].sweep[1] < sweep_devs[0].sweep[0]:
+                x_for_horiz = np.flip(x_for_horiz)  # reversed sweep
             y_for_vert = np.array([0])
             # rectangle for transform: x, y, w, h
-            self.image_rect = (min(sweep_devs[0].sweep[:2]), 0,
-                          np.abs(sweep_devs[0].sweep[1]-sweep_devs[0].sweep[0]), 1)
-            self.updateLabels(x=sweep_devs[0].getDisplayName('short'), out=out_devs[0].getDisplayName('short'))
+            self.image_rect = (
+                min(sweep_devs[0].sweep[:2]),
+                0,
+                np.abs(sweep_devs[0].sweep[1] - sweep_devs[0].sweep[0]),
+                1,
+            )
+            self.updateLabels(
+                x=sweep_devs[0].getDisplayName("short"),
+                out=out_devs[0].getDisplayName("short"),
+            )
 
         elif len(sweep_devs) == 2:
-            self.main.setLabel('left', sweep_devs[1].getDisplayName('short'))
-            self.vertical.setLabel('left', sweep_devs[1].getDisplayName('short'))
-            x_for_horiz = np.linspace(sweep_devs[0].sweep[0], sweep_devs[0].sweep[1], sweep_devs[0].sweep[2])
-            y_for_vert = np.linspace(sweep_devs[1].sweep[0], sweep_devs[1].sweep[1], sweep_devs[1].sweep[2])
-            if sweep_devs[0].sweep[1] < sweep_devs[0].sweep[0]: x_for_horiz = np.flip(x_for_horiz)
-            if sweep_devs[1].sweep[1] < sweep_devs[1].sweep[0]: y_for_vert = np.flip(y_for_vert)
+            self.main.setLabel("left", sweep_devs[1].getDisplayName("short"))
+            self.vertical.setLabel("left", sweep_devs[1].getDisplayName("short"))
+            x_for_horiz = np.linspace(
+                sweep_devs[0].sweep[0], sweep_devs[0].sweep[1], sweep_devs[0].sweep[2]
+            )
+            y_for_vert = np.linspace(
+                sweep_devs[1].sweep[0], sweep_devs[1].sweep[1], sweep_devs[1].sweep[2]
+            )
+            if sweep_devs[0].sweep[1] < sweep_devs[0].sweep[0]:
+                x_for_horiz = np.flip(x_for_horiz)
+            if sweep_devs[1].sweep[1] < sweep_devs[1].sweep[0]:
+                y_for_vert = np.flip(y_for_vert)
             # rectangle for transform: x, y, w, h
-            self.image_rect = (min(sweep_devs[0].sweep[:2]), min(sweep_devs[1].sweep[:2]),
-                          np.abs(sweep_devs[0].sweep[1]-sweep_devs[0].sweep[0]),
-                          np.abs(sweep_devs[1].sweep[1]-sweep_devs[1].sweep[0]))
-            self.updateLabels(x=sweep_devs[0].getDisplayName('short'), y=sweep_devs[1].getDisplayName('short'), out=out_devs[0].getDisplayName('short'))
+            self.image_rect = (
+                min(sweep_devs[0].sweep[:2]),
+                min(sweep_devs[1].sweep[:2]),
+                np.abs(sweep_devs[0].sweep[1] - sweep_devs[0].sweep[0]),
+                np.abs(sweep_devs[1].sweep[1] - sweep_devs[1].sweep[0]),
+            )
+            self.updateLabels(
+                x=sweep_devs[0].getDisplayName("short"),
+                y=sweep_devs[1].getDisplayName("short"),
+                out=out_devs[0].getDisplayName("short"),
+            )
 
-        self.axes = {'x': x_for_horiz, 'y': y_for_vert}
+        self.axes = {"x": x_for_horiz, "y": y_for_vert}
         self.resetView()
         # set cb_out
         self.cb_out.currentIndexChanged.disconnect(self.onCbOutChanged)
         for dev in out_devs:
-            self.cb_out.addItem(dev.getDisplayName('short'), dev)
+            self.cb_out.addItem(dev.getDisplayName("short"), dev)
         self.cb_out.currentIndexChanged.connect(self.onCbOutChanged)
         self.cb_out.setCurrentIndex(0)
 
     # -- connected to signals --
-    
-#    def onTargetMove(self, pos):
-#        x, y = pos.x(), pos.y()
-#        self.vline_main.setPos(x); self.hline_main.setPos(y)
-#        self.vline.setPos(x); self.hline.setPos(y)
-#        if self.image.image is None: return
-#        self.target_px_x, self.target_px_y = self.coordToPixel(x, y, self.image.image, self.image_rect)
-#        self.updateSideGraphs()
+
+    #    def onTargetMove(self, pos):
+    #        x, y = pos.x(), pos.y()
+    #        self.vline_main.setPos(x); self.hline_main.setPos(y)
+    #        self.vline.setPos(x); self.hline.setPos(y)
+    #        if self.image.image is None: return
+    #        self.target_px_x, self.target_px_y = self.coordToPixel(x, y, self.image.image, self.image_rect)
+    #        self.updateSideGraphs()
 
     def updateLabels(self, x=None, y=None, out=None):
-        if x: self.labels['x'] = x
-        if y: self.labels['y'] = y
-        if out: self.labels['out'] = out
-        self.main.setLabel('bottom', self.labels['x'])
-        self.horizontal.setLabel('bottom', self.labels['x'])
-        self.main.setLabel('left', self.labels['y'])
-        self.vertical.setLabel('bottom', self.labels['y'])
-        self.bar.setLabel('left', self.labels['out'])
-        self.horizontal.setLabel('left', self.labels['out'])
-        self.vertical.setLabel('left', self.labels['out'])
+        if x:
+            self.labels["x"] = x
+        if y:
+            self.labels["y"] = y
+        if out:
+            self.labels["out"] = out
+        self.main.setLabel("bottom", self.labels["x"])
+        self.horizontal.setLabel("bottom", self.labels["x"])
+        self.main.setLabel("left", self.labels["y"])
+        self.vertical.setLabel("bottom", self.labels["y"])
+        self.bar.setLabel("left", self.labels["out"])
+        self.horizontal.setLabel("left", self.labels["out"])
+        self.vertical.setLabel("left", self.labels["out"])
 
     def updateBar(self):
         data = self.image.image
-        if data is None: return
-        if np.isnan(data).all(): return
+        if data is None:
+            return
+        if np.isnan(data).all():
+            return
         mini, maxi = np.nanmin(data), np.nanmax(data)
         self.bar.setLevels((mini, maxi))
 
     def updateFilter(self, filter_=None, sigma=None):
-        if filter_: self.filter_state[0] = filter_
-        if sigma: self.filter_state[1] = sigma
+        if filter_:
+            self.filter_state[0] = filter_
+        if sigma:
+            self.filter_state[1] = sigma
         self.drawRaw()
 
     def onTranspose(self, boo):
-        self.updateLabels(x=self.labels['y'], y=self.labels['x'], out=self.labels['out'])
-        self.image_rect = (self.image_rect[1], self.image_rect[0], self.image_rect[3], self.image_rect[2])
+        self.updateLabels(
+            x=self.labels["y"], y=self.labels["x"], out=self.labels["out"]
+        )
+        self.image_rect = (
+            self.image_rect[1],
+            self.image_rect[0],
+            self.image_rect[3],
+            self.image_rect[2],
+        )
         self.drawRaw()
         self.resetView()
 
     def onCbOutChanged(self):
         out_dev = self.cb_out.currentData()
-        if out_dev is None: return
-        self.updateLabels(out=out_dev.getDisplayName('short'))
+        if out_dev is None:
+            return
+        self.updateLabels(out=out_dev.getDisplayName("short"))
         self.drawSweep()
-    
+
     # -- targets --
     def updateTargets(self):
         for target in self.targets:
             target.update()
-        
+
     def targets_toggleLines(self, boo):
         for target in self.targets:
             target.vline.setVisible(boo)
             target.hline.setVisible(boo)
 
     # -- utils (no self) --
-    
+
     def filter_(self, data, axis, sigma):
-        axis = {'dx': 0, 'dy': 1}.get(axis, -1)
+        axis = {"dx": 0, "dy": 1}.get(axis, -1)
         if axis == -1 or data.shape[axis] == 1:
             return data
-        data = gaussian_filter1d(data, sigma=sigma, axis=axis, mode='nearest')
+        data = gaussian_filter1d(data, sigma=sigma, axis=axis, mode="nearest")
         return np.gradient(data, axis=axis)
 
-        
 
-class Target():
-
+class Target:
     def __init__(self, parent):
         self.parent = parent
 
         self.color = pg.intColor(self.parent.int_color)
         self.parent.int_color += 1
 
-        self.target = pg.TargetItem((0,0), symbol='crosshair', pen=pg.mkPen(self.color, width=1))
-        self.label = pg.TargetLabel(self.target, text='', color=self.color, offset=(10, 10))
-        self.vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen(self.color, width=2))
-        self.hline = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(self.color, width=2))
-        self.horizontal = self.parent.horizontal.plot()#pen=pg.mkPen(self.color, width=2))
-        self.vertical = self.parent.vertical.plot()#pen=pg.mkPen(self.color, width=2))
+        self.target = pg.TargetItem(
+            (0, 0), symbol="crosshair", pen=pg.mkPen(self.color, width=1)
+        )
+        self.label = pg.TargetLabel(
+            self.target, text="", color=self.color, offset=(10, 10)
+        )
+        self.vline = pg.InfiniteLine(
+            angle=90, movable=False, pen=pg.mkPen(self.color, width=2)
+        )
+        self.hline = pg.InfiniteLine(
+            angle=0, movable=False, pen=pg.mkPen(self.color, width=2)
+        )
+        self.horizontal = (
+            self.parent.horizontal.plot()
+        )  # pen=pg.mkPen(self.color, width=2))
+        self.vertical = (
+            self.parent.vertical.plot()
+        )  # pen=pg.mkPen(self.color, width=2))
 
-
-        self.target.setZValue(10); self.vline.setZValue(10); self.hline.setZValue(10)
+        self.target.setZValue(10)
+        self.vline.setZValue(10)
+        self.hline.setZValue(10)
         self.target.sigPositionChanged.connect(self.onTargetMove)
         self.onTargetMove(QPoint(0, 0))
-
-        
 
         parent.main.addItem(self.target)
         parent.main.addItem(self.vline)
@@ -283,33 +336,39 @@ class Target():
 
     def _coordToPixel(self, image, image_rect):
         x, y = self.target.pos().x(), self.target.pos().y()
-        x_index = int((x-image_rect[0])/(image_rect[2]/image.shape[0]))
-        y_index = int((y-image_rect[1])/(image_rect[3]/image.shape[1]))
-        if x_index > image.shape[0]-1: x_index = -1
-        if y_index > image.shape[1]-1: y_index = -1
-        if x_index < 0: x_index = -1
-        if y_index < 0: y_index = -1
+        x_index = int((x - image_rect[0]) / (image_rect[2] / image.shape[0]))
+        y_index = int((y - image_rect[1]) / (image_rect[3] / image.shape[1]))
+        if x_index > image.shape[0] - 1:
+            x_index = -1
+        if y_index > image.shape[1] - 1:
+            y_index = -1
+        if x_index < 0:
+            x_index = -1
+        if y_index < 0:
+            y_index = -1
         return x_index, y_index
-    
+
     def onTargetMove(self, pos):
-        self.vline.setPos(pos.x()); self.hline.setPos(pos.y())
-        if self.parent.image.image is None: return
-        
-        #print(self.px_x, self.px_y)
+        self.vline.setPos(pos.x())
+        self.hline.setPos(pos.y())
+        if self.parent.image.image is None:
+            return
+
+        # print(self.px_x, self.px_y)
         self.update()
-    
+
     def update(self):
         x, y = self._coordToPixel(self.parent.image.image, self.parent.image_rect)
         self.updateLabel(x, y)
         self.updateTrace()
-    
+
     def updateLabel(self, x, y):
         if x == -1 or y == -1:
-            self.label.setText('')
+            self.label.setText("")
             return
         string = str(self.parent.image.image[x, y])
-        #self.label.setText(string if string != 'nan' else '')
+        # self.label.setText(string if string != 'nan' else '')
         self.label.setText(string)
-    
+
     def updateTrace(self):
         pass

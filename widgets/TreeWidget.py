@@ -1,6 +1,5 @@
-import sys
 from PyQt5.QtWidgets import QTreeWidget, QAbstractItemView
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtCore
 
 from src.GuiInstrument import GuiInstrument, GuiDevice
 
@@ -10,23 +9,23 @@ class TreeWidget(QTreeWidget):
         super(TreeWidget, self).__init__()
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setDragDropMode(QAbstractItemView.DragDrop)
-    
+
     def __iter__(self):
         # make the tree iterable
         for i in range(self.topLevelItemCount()):
             yield self.topLevelItem(i)
-    
+
     def __getitem__(self, key):
         # make the tree subscriptable
         return self.topLevelItem(key)
-        
+
     def selectedItem(self):
         # return theselected item
         selected = self.selectedItems()
         if len(selected) == 0:
             return None
         return selected[0]
-    
+
     @staticmethod
     def getData(item):
         # return the data of an item
@@ -35,7 +34,7 @@ class TreeWidget(QTreeWidget):
     def setData(self, item, data):
         # set the data of an item
         item.setData(0, QtCore.Qt.UserRole, data)
-    
+
     def findItemByData(self, data):
         # find an item by its data, including subitems
         for i in range(self.topLevelItemCount()):
@@ -62,7 +61,7 @@ class TreeWidget(QTreeWidget):
 
     def mimeTypes(self):
         # define the mime types that can be dragged
-        return ['device-nickname', 'instrument-nickname']
+        return ["device-nickname", "instrument-nickname"]
 
     def mimeData(self, items):
         # what happens when the item is dragged
@@ -71,15 +70,15 @@ class TreeWidget(QTreeWidget):
         # get data:
         data = self.getData(item)
         if isinstance(data, GuiInstrument):
-            b_name = bytes(data.nickname, 'utf-8')
-            mime_data.setData('instrument-nickname', b_name)
+            b_name = bytes(data.nickname, "utf-8")
+            mime_data.setData("instrument-nickname", b_name)
         elif isinstance(data, GuiDevice):
-            b_parent_name = bytes(data.parent.nickname, 'utf-8')
-            b_name =  bytes(data.nickname, 'utf-8')
-            mime_data.setData('instrument-nickname', b_parent_name)
-            mime_data.setData('device-nickname', b_name)
+            b_parent_name = bytes(data.parent.nickname, "utf-8")
+            b_name = bytes(data.nickname, "utf-8")
+            mime_data.setData("instrument-nickname", b_parent_name)
+            mime_data.setData("device-nickname", b_name)
         return mime_data
-            
+
     def dropMimeData(self, parent, row, data, action):
         # what happens when the item is dropped
         # implemented by children
