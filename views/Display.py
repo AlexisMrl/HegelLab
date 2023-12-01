@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
 )
 from PyQt5.QtGui import qRgb, QImage, QPixmap, QIcon
+from PyQt5.QtCore import Qt
 import pyqtgraph as pg
 
 

@@ -17,6 +17,7 @@ class Main(QMainWindow):
         super(Main, self).__init__()
         # -- ui setup --
         uic.loadUi("ui/MainWindow.ui", self)
+        self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle("HegelLab")
         self.setWindowIcon(QtGui.QIcon("resources/favicon/favicon.png"))
         self.toolBar.setToolButtonStyle(2)  # text beside icon
@@ -57,7 +58,10 @@ class Main(QMainWindow):
         self.statusBar().addWidget(self.sweep_iteration)
         self.sweep_estimation = QLabel()
         self.statusBar().addWidget(self.sweep_estimation)
-
+        # console button
+        self.btn_console = QAction(QtGui.QIcon("resources/console.svg"), "Console")
+        self.btn_console.triggered.connect(lambda: lab.showConsole())
+        self.toolBar.insertAction(self.toolBar.actions()[0], self.btn_console)
         # width for first column for tree:
         self.tree_sw.setColumnWidth(0, 200)
         # before_wait:
@@ -131,10 +135,7 @@ class Main(QMainWindow):
         self.lab.startSweep()
 
     def closeEvent(self, event):
-        if self.lab.close():
-            event.accept()
-        else:
-            event.ignore()
+        self.lab.askClose(event)
 
     # -- gui -- (called by the lab)
     def _gui_makeItem(self, tree, gui_dev):

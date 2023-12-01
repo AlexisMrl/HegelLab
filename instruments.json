@@ -1,0 +1,79 @@
+{
+    "instruments": [
+        {
+            "name": "dummy",
+            "ph_class": "instruments.dummy",
+            "address": "",
+            "driver": "Drivers.Default",
+            "devices": [
+                {
+                    "ph_name": "rand"
+                },
+                {
+                    "nickname": "voltageLimit",
+                    "ph_name": "volt",
+                    "ramp": {"rate": 1},
+                    "scale": {"scale_factor": 1, "offset": 9},
+                    "limit": {"min": -10, "max": 10}
+                },
+                {
+                    "nickname": "courant",
+                    "ph_name": "current",
+                    "scale": {"scale_factor": 10}
+                }
+            ]
+        },
+
+        {
+            "name": "zurich",
+            "ph_class": "instruments.zurich_UHF",
+            "address": "dev2021",
+            "devices": [
+                {
+                    "nickname": "demod_en1",
+                    "ph_name": "demod_en",
+                    "extra_args": {"ch": 1}
+                },
+                {
+                    "nickname": "demod_en2",
+                    "ph_name": "demod_en",
+                    "extra_args": {"ch": 2}
+                }
+            ]
+        },
+
+        {
+            "name": "be214x",
+            "ph_class": "instruments.iTest_be214x",
+            "address": "TCPIP::192.168.150.145::5025::SOCKET",
+            "slots": [1, 2, 3, 4],
+            "devices": [
+                {
+                    "nickname": "output_en1",
+                    "ph_name": "output_en",
+                    "extra_args": {"ch": 1}
+                },
+                {
+                    "nickname": "range1",
+                    "ph_name": "range",
+                    "extra_args": {"ch": 1}
+                }
+            ]
+        },
+
+        {
+            "name": "ami",
+            "ph_class": "instruments.iTest_be214x",
+            "driver": "Drivers.ami430",
+            "address_x": "tcpip::A6013_X-AX.local::7180::socket",
+            "address_y": "tcpip::A5072_Y-AX.local::7180::socket",
+            "address_z": "tcpip::A6021_Z-AX.local::7180::socket"
+        },
+
+        {
+            "name": "virtual",
+            "ph_class": "instruments.virtual_gates_instr",
+            "driver": "Drivers.VirtualGates"
+        }
+    ]
+}

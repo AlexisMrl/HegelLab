@@ -2,95 +2,83 @@ class GuiInstrument:
     # class attached to every item that represent an instr
 
     def __init__(
-        self, nickname, instr_name, instr_cls, instr_driver, address, slot=None
+        self, nickname, instr_name, ph_class, driver, address, slot=None
     ):
         self.nickname = nickname
-        self.instr_name = instr_name
-        self.instr_cls = instr_cls
-        self.instr_driver = instr_driver
+        self.instr_name = instr_name # name in the config json file
+        self.ph_class = ph_class
+        self.driver = driver # driver name, default = Drivers.Default
         self.address = address
         self.slot = slot
 
+        self.instr_dict = {}  # the dict from json file (as is (not updated)). Used for driver with extra args
         self.ph_instr = None
-        self.gui_devices = {}  # {nickname: GuiDevice}
+        self.gui_devices = []  # list of GuiDevice
 
     def getDisplayName(self, type=""):
-        # type for consistency with GuiDevice
+        # 'type' for consistency with GuiDevice
         if self.nickname != self.instr_name:
             return self.nickname + " (" + self.instr_name + ")"
         else:
             return self.nickname
-
-    def getGuiDevByDevName(self, dev_name):  # name is not the nickname
-        for gui_dev in self.gui_devices.values():
-            if gui_dev.dev_name == dev_name:
-                return gui_dev
+    
+    def getGuiDevice(self, dev_nickname):
+        for gui_device in self.gui_devices:
+            if gui_device.nickname != dev_nickname:
+                continue
+            return gui_device
         return None
-
-    def getCopy(self):
-        # return a 'copy' of self without ph_instr and ph_dev
-        # so pickle can save it, and ph devs are not dereferenced
-        me = GuiInstrument(self.nickname, self.instr_name, self.instr_cls, self.address)
-        return me
+    
 
 
 class GuiDevice:
     # class attached to every item that represent a dev
 
-    def __init__(self, nickname, dev_name, parent):
+    def __init__(self, nickname, ph_name, extra_args, parent):
         self.nickname = nickname
-        self.dev_name = dev_name
+        self.ph_name = ph_name
+        self.extra_args = extra_args # dict of kwargs for tuple devices
         self.parent = parent
-
-        # kept when saving/loading
-        self.hide = False  # if True, the device is not shown in the gui
-        self.ph_dict = None  # if the device is a tuple, holds the kwargs
-        # for ramping and scaling devices
-        self.needed_by = []  # list of gui_dev: device that needs this one
-        self.needs = []  # list of gui_dev: device that this one needs
-        self.extra_type = None  # key of supported_devices
-        self.extra_args = None  # {arg_name: arg_value}
+        
+        self.logical_kwargs = {'scale': {}, 'ramp':{}, 'limit':{}}
+        self.logical_dev = None
 
         # not kept when saving
         self.ph_dev = None
         self.ph_choice = None  # ChoiceString from pyHegel
         self.type = (False, False)  # (settable, gettable)
         self.sweep = [None, None, None]  # [start, stop, npts]
-        self.cache_value = None  # a value to cache the last value read
+        self.cache_value = None  # a variable to cache the last value read
 
         # a np.array for when the device is in a sweep (swept or output)
         # size is allocated at the beginning of the sweep
         self.values = None
         self.sw_idx = None  # SweepIdxIter object
 
-    def getDisplayName(self, type="short"):
-        # type: 'short' or 'long'
-        #   short: nickname + dev_name
-        #   long: instr_name + nickname + dev_name
-        dev_name = self.dev_name
-        if self.ph_dict is not None:
-            str_ars = [str(k) + "=" + str(v) for k, v in self.ph_dict.items()]
-            dev_name = dev_name + ", " + "".join(str_ars)
-        if type == "short":
-            if self.nickname != self.dev_name:
-                return self.nickname + " (" + dev_name + ")"
-            return self.nickname
-        if type == "long":
-            if self.nickname != self.dev_name:
-                return (
-                    self.parent.nickname + " - " + self.nickname + " (" + dev_name + ")"
-                )
-            return self.parent.nickname + " - " + self.nickname
-
     def getPhDev(self):
+        if self.logical_dev is not None:
+            return self.logical_dev
         dev = self.ph_dev
-        if self.ph_dict is not None:
-            return (dev, self.ph_dict)
+        if self.extra_args != {}:
+            return (dev, self.extra_args)
         return dev
 
-    def getCopy(self, parent):
-        me = GuiDevice(self.display_name, self.name, parent)
-        me.is_extra = self.is_extra
-        me.extra_type = self.extra_type
-        me.extra_args = self.extra_args
-        return me
+    def getDisplayName(self, type="short"):
+        # type: 'short' or 'long'
+        #   short: nickname + ph_name
+        #   long: instr.nickname + nickname + ph_name
+        nickname = self.nickname
+        if self.extra_args != {}:
+            str_args = [str(k) + "=" + str(v) for k, v in self.extra_args.items()]
+            nickname = nickname + ", " + "".join(str_args)
+
+        if type == "short":
+            if self.nickname != self.ph_name:
+                return self.nickname + " (" + self.ph_name + ")"
+            return self.nickname
+        if type == "long":
+            if self.nickname != self.ph_name:
+                return (
+                    self.parent.nickname + " - " + self.nickname + " (" + self.ph_name + ")"
+                )
+            return self.parent.nickname + " - " + self.nickname

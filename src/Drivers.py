@@ -12,38 +12,28 @@ from PyQt5.QtWidgets import (
 )
 from pyHegel.gui import ScientificSpinBox
 
-
-class Driver:
-    # a class to inherit from when creating a custom gui for an instrument
-
-    sweep_window = QMainWindow()
-    load_window = QMainWindow()
-
-    @staticmethod
-    def load(nickname, ph_cls, address, slot=None):
-        # this function must return a loaded PyHegel instrument
-        pass
-
-    @staticmethod
-    def sweep(gui_dev):
-        # this function returns nothing.
-        # it's called on when asking for instrument sweep
-        # it must set the sweep attribute of gui_dev
-        # gui_dev.sweep = [start, stop, npts]
-        pass
-
-
 ####################
 # Default Driver
 ####################
 
+class Default:
+    # a class to inherit from when creating a custom gui for an instrument
 
-class Default(Driver):
     @staticmethod
-    def load(nickname, ph_cls, address, **kwargs):
-        instr = ph_cls(address, **kwargs)
+    def load(gui_instr):
+        # set gui_instr.ph_instr
+
+        nickname = gui_instr.nickname
+        ph_class = gui_instr.ph_class
+        address = gui_instr.address
+        kwargs = {}
+        if gui_instr.slot is not None:
+            kwargs['slot'] = gui_instr.slot
+        instr = ph_class(address, **kwargs)
         instr.header.set(nickname)
-        return instr
+        
+        gui_instr.ph_instr = instr
+        return True
 
     @staticmethod
     def config():
@@ -51,9 +41,12 @@ class Default(Driver):
 
     @staticmethod
     def sweep(lab, gui_dev):
+        # set the sweep attribute of gui_dev
+        # gui_dev.sweep = [start, stop, npts]
+
         # minimal window for defining sweep start, stop, step:
         display_name = gui_dev.getDisplayName("long")
-        win = Driver.sweep_window
+        win = QMainWindow()
         win.setWindowTitle("Setup sweep " + display_name)
         win.setWindowIcon(QtGui.QIcon("resources/favicon/favicon.png"))
         wid = QWidget()
@@ -110,11 +103,14 @@ class Default(Driver):
 # American Magnetics
 ####################
 
-
-class ami430(Driver):
+class ami430(Default):
     @staticmethod
-    def load(nickname, ph_cls, address, slot=None):
-        win = Driver.load_window
+    def load(gui_instr):
+        nickname = gui_instr.nickname
+        ph_class = gui_instr.ph_class
+        address = gui_instr.address
+
+        win = QMainWindow()
         title = "Setup AMI430 vector - " + str(nickname)
         win.setWindowTitle(title)
         wid = QWidget()
@@ -158,7 +154,22 @@ class ami430(Driver):
         btn_cancel.clicked.connect(onCancel)
 
         def onLoadVector():
-            vector = Default.load(nickname, ph_cls, *magnets)
+            vector = Default.load(nickname, ph_class, *magnets)
             win.close()
 
         win.show()
+
+
+####################
+# Virtual Gates
+####################
+
+class VirtualGates(Default):
+
+    @staticmethod
+    def load(gui_instr):
+        pass
+
+    @staticmethod
+    def sweep(gui_dev):
+        Default.sweep(gui_dev)

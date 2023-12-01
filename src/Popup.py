@@ -75,6 +75,17 @@ class Popup:
         )
         return
 
+    def devLoadLogicalError(self, exception, traceback):
+        self._popErrorWithDetails(
+            QMessageBox.Critical,
+            "Error",
+            "Error while loading logical device: "
+            + str(exception)
+            + "\nThe base device is still loaded.",
+            traceback,
+        )
+        return
+
     def sweepThreadError(self, exception, traceback):
         self._popErrorWithDetails(
             QMessageBox.Critical,

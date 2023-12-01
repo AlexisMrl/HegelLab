@@ -39,57 +39,44 @@ class Rack(QMainWindow):
         # -- Connect signals to slots --
         self.actionAdd.triggered.connect(self.onLoadInstrument)
         self.actionRemove.triggered.connect(self.onRemoveInstrument)
-        # self.actionConfig.triggered.connect(self.onActionConfig)
+        self.actionLoad.triggered.connect(self.onActionLoad)
         self.tree.itemSelectionChanged.connect(self.onSelectionChanged)
         self.tree.itemDoubleClicked.connect(self.onDoubleClick)
         self.pb_get.clicked.connect(self.onGetValue)
         self.pb_set.clicked.connect(self.onSetValue)
-        self.pb_create.clicked.connect(self.onCreateDevice)
         self.pb_rename.clicked.connect(self.onRename)
-        self.pb_remove.clicked.connect(self.onRemoveDevice)
 
     def onSelectionChanged(self):
         selected_item = self.tree.selectedItem()
         if selected_item is None:
             # when nothing is selected
             self.actionRemove.setEnabled(False)
-            self.actionConfig.setEnabled(False)
+            self.actionLoad.setEnabled(False)
             self.pb_get.setEnabled(False)
             self.pb_set.setEnabled(False)
             self.pb_rename.setEnabled(False)
-            self.pb_create.setEnabled(False)
-            self.pb_remove.setEnabled(False)
             self.pb_config.setEnabled(False)
             return
         data = self.tree.getData(self.tree.selectedItem())
         if isinstance(data, GuiInstrument):
             # when an instrument is selected
             self.actionRemove.setEnabled(True)
-            self.actionConfig.setEnabled(True)
+            self.actionLoad.setEnabled(True)
             self.pb_get.setEnabled(False)
             self.pb_set.setEnabled(False)
             self.pb_rename.setEnabled(False)
-            self.pb_create.setEnabled(False)
-            self.pb_remove.setEnabled(False)
             self.pb_config.setEnabled(False)
         elif isinstance(data, GuiDevice):
             # when a device is selected
             self.actionRemove.setEnabled(False)
-            self.actionConfig.setEnabled(False)
+            self.actionLoad.setEnabled(False)
             self.pb_get.setEnabled(True)
             self.pb_rename.setEnabled(True)
-            self.pb_create.setEnabled(True)
             gui_dev = data
             if gui_dev.type[0]:
                 self.pb_set.setEnabled(True)
             else:
                 self.pb_set.setEnabled(False)
-            if len(gui_dev.needs) > 0:
-                self.pb_remove.setEnabled(True)
-                self.pb_config.setEnabled(True)
-            else:
-                self.pb_remove.setEnabled(False)
-                self.pb_config.setEnabled(False)
 
     def onDoubleClick(self, item, _):
         print("double click")
@@ -123,7 +110,7 @@ class Rack(QMainWindow):
             value_wid = QComboBox()
             for choice in gui_dev.ph_choice:
                 value_wid.addItem(str(choice), choice)
-            value_wid.value = value_wid.currentData
+            #value_wid.value = value_wid.currentData
             layout.addWidget(value_wid)
         else:  # spinbox by default
             value_wid = PyScientificSpinBox()
@@ -145,6 +132,10 @@ class Rack(QMainWindow):
         bt_ok.clicked.connect(okClicked)
         bt_cancel.clicked.connect(cancelClicked)
         self.win_set.show()
+    
+    def onActionLoad(self):
+        selected_item = self.tree.selectedItem()
+        self.lab.loadGuiInstrument(self.tree.getData(selected_item))
 
     def onRemoveInstrument(self):
         # get parent selected item:
@@ -194,20 +185,22 @@ class Rack(QMainWindow):
         layout.addWidget(le_address)
         layout.addWidget(le_nickname)
 
-        for name, settings in self.lab.supported_instruments.items():
-            cb_instr.addItem(name, settings)
+        for instrument in self.lab.instr_list:
+            cb_instr.addItem(instrument.get('name'), instrument)
 
         def cbInstrChanged(settings):
-            if settings["has_address"]:
+            address = settings.get('address', None)
+            if address:
                 le_address.setEnabled(True)
-                le_address.setText(settings["address"])
+                le_address.setText(address)
             else:
                 le_address.setEnabled(False)
                 le_address.clear()
-            if settings["has_slots"]:
+            slots = settings.get('slots', None)
+            if slots:
                 lbl_slot.setEnabled(True)
                 cb_slot.setEnabled(True)
-                cb_slot.addItems([str(p) for p in settings["slots"]])
+                cb_slot.addItems([str(s) for s in slots])
             else:
                 lbl_slot.setEnabled(False)
                 cb_slot.setEnabled(False)
@@ -230,10 +223,9 @@ class Rack(QMainWindow):
             name = cb_instr.currentText()
             nickname = le_nickname.text() if le_nickname.text() != "" else name
             address = le_address.text()
-            slot = None
-            if cb_slot.isEnabled():
-                slot = int(cb_slot.currentText())
-            self.lab.buildGuiInstrument(nickname, name, address, slot)
+            slot = int(cb_slot.currentText()) if cb_slot.isEnabled() else None
+            instr_dict = cb_instr.currentData()
+            self.lab.newInstrumentFromRack(nickname, address, slot, instr_dict)
 
         bt_ok.clicked.connect(okClicked)
         bt_cancel.clicked.connect(self.win_add.close)
@@ -278,80 +270,29 @@ class Rack(QMainWindow):
         bt_cancel.clicked.connect(cancelClicked)
         self.win_rename.show()
 
-    def onRemoveDevice(self):
-        # get parent selected item:
-        selected_item = self.tree.selectedItem()
-        gui_dev = self.tree.getData(selected_item)
-        self.lab.removeGuiDevice(gui_dev)
-
-    # window create device
-    def onCreateDevice(self):
-        # load window/RackCreateDevice.ui
-        wid = QWidget()
-        uic.loadUi("ui/RackCreateDevice.ui", wid)
-        self.win_create_dev.setCentralWidget(wid)
-        self.win_create_dev.setWindowIcon(QtGui.QIcon("resources/list-add.svg"))
-        self.win_create_dev.setWindowTitle("Create device")
-
-        gui_dev = self.tree.getData(self.tree.selectedItem())
-        wid.lbl_base_dev.setText(gui_dev.getDisplayName("short"))
-        wid.setWindowTitle("Create device for " + gui_dev.parent.getDisplayName())
-
-        # fill list widget:
-        for settings in self.lab.supported_devices.values():
-            item = QListWidgetItem(settings["name"])
-            item.setData(Qt.UserRole, settings)
-            wid.list.addItem(item)
-
-        def onListItemChanged():
-            item = wid.list.currentItem()
-            settings = item.data(Qt.UserRole)
-            wid.lbl_arg1.setText(settings["arg_labels"][0])
-            wid.lbl_arg2.setText(settings["arg_labels"][1])
-            wid.sb_arg1.setValue(settings["arg_defaults"][0])
-            wid.sb_arg2.setValue(settings["arg_defaults"][1])
-            wid.le_nickname.setText(settings["key"] + "_" + gui_dev.nickname)
-
-        wid.list.currentItemChanged.connect(onListItemChanged)
-        wid.list.setCurrentRow(0)
-
-        def onCreateClicked():
-            item = wid.list.currentItem()
-            settings = item.data(Qt.UserRole)
-            arg_kw1, arg_kw2 = settings["arg_kw"]
-            kwargs = {arg_kw1: wid.sb_arg1.value(), arg_kw2: wid.sb_arg2.value()}
-            nickname = wid.le_nickname.text()
-            base_hide = wid.cb_hide.isChecked()
-
-            self.lab.createWrapDevice(
-                gui_dev, settings["key"], kwargs, nickname, base_hide
-            )
-            self.win_create_dev.close()
-
-        wid.btn_create.clicked.connect(onCreateClicked)
-        wid.btn_cancel.clicked.connect(self.win_create_dev.close)
-
-        self.win_create_dev.show()
 
     # -- end windows --
 
     # -- gui_: update the gui -- (called by the lab)
+    def _logicalParamStr(self, logical_kwargs):
+        string = ''
+        for key, value in logical_kwargs.items():
+            if not value:
+                continue
+            string += str(value) + ', '
+        return string
+
     def gui_fillGuiInstrument(self, gui_instr):
         instr_item = self.tree.findItemByData(gui_instr)
-        print(instr_item)
         # fill the instrument item with its devices
-        for gui_dev in gui_instr.gui_devices.values():
-            if gui_dev.hide:
-                continue
+        for gui_dev in gui_instr.gui_devices:
             dev_item = QTreeWidgetItem(instr_item)
             self.tree.setData(dev_item, gui_dev)
             dev_item.setText(0, gui_dev.getDisplayName("short"))
             dev_item.setText(
                 1, str(gui_dev.cache_value) if gui_dev.cache_value is not None else ""
             )
-            dev_item.setText(
-                2, str(gui_dev.extra_args) if gui_dev.extra_args is not None else ""
-            )
+            dev_item.setText(2, str(self._logicalParamStr(gui_dev.logical_kwargs)))
             dev_item.setText(
                 3,
                 {
@@ -372,7 +313,7 @@ class Rack(QMainWindow):
         item.setFlags(item.flags() & ~Qt.ItemIsDragEnabled)
         item.setText(0, gui_instr.getDisplayName())
         item.setText(2, gui_instr.address)
-        item.setText(3, gui_instr.instr_cls.__name__)
+        item.setText(3, gui_instr.ph_class.__name__)
         item.setFont(3, self.fixed_font)
         item.setText(
             4, {True: "Loaded", False: "Not loaded"}[gui_instr.ph_instr is not None]
@@ -393,6 +334,10 @@ class Rack(QMainWindow):
             item.removeChild(item.child(0))
         # refill
         self.gui_fillGuiInstrument(gui_instr)
+        # instr status:
+        item.setText(
+            4, {True: "Loaded", False: "Not loaded"}[gui_instr.ph_instr is not None]
+        )
 
     def gui_renameDevice(self, gui_dev):
         # rename the device item in self.tree

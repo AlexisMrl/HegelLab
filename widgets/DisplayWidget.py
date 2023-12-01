@@ -8,7 +8,7 @@ from pyHegel.gui import ScientificSpinBox
 
 
 class DisplayWidget(QMainWindow):
-    def init(self):
+    def initVars(self):
         self.filter_state = ["no", 1]  # (<'no', 'dx', 'dy'>, sigma)
         # self.raw_data = np.random.rand(10, 10)  # raw data, before derivative and transpose
         self.raw_data = np.full(
@@ -74,14 +74,7 @@ class DisplayWidget(QMainWindow):
         self.btn_transpose.setCheckable(True)
         self.btn_transpose.setChecked(False)
         self.btn_transpose.triggered.connect(self.onTranspose)
-        # cursor toolbutton:
-        # self.btn_cursor = QAction('Cursor')
-        # self.btn_cursor.setCheckable(True)
-        # menu = QMenu()
-        # menu.addAction('Follow mouse')
-        # menu.addAction('Target')
-        # self.btn_cursor.setMenu(menu)
-        # self.toolBar.addAction(self.btn_cursor)
+        self.btn_transpose.setVisible(False) # TODO: transpose not implemented yet
 
         # tb2 combobox derivative:
         self.toolBar2.addWidget(QLabel("Derivative:"))
@@ -120,7 +113,7 @@ class DisplayWidget(QMainWindow):
         self.btn_remove_crosshair.triggered.connect(onRemoveCrosshair)
 
         # variables
-        self.init()
+        self.initVars()
         self.targets = [Target(self)]
         self.drawRaw()
         self.updateLabels()
@@ -132,9 +125,9 @@ class DisplayWidget(QMainWindow):
         self.cb_out.clear()
 
     def resetView(self):
-        self.main.autoRange()
         self.horizontal.autoRange()
         self.vertical.autoRange()
+        self.main.autoRange(padding=0)
 
     def drawRaw(self):
         to_draw = self.raw_data.T if self.btn_transpose.isChecked() else self.raw_data
@@ -146,8 +139,10 @@ class DisplayWidget(QMainWindow):
         self.updateTargets()
 
     def drawSweep(self):
-        data = self.cb_out.currentData().values
-        self.raw_data = data
+        out_dev = self.cb_out.currentData()
+        if out_dev is None:
+            return
+        self.raw_data = out_dev.values
         self.drawRaw()
 
     def initSweep(self, out_devs, sweep_devs):
@@ -201,7 +196,10 @@ class DisplayWidget(QMainWindow):
             )
 
         self.axes = {"x": x_for_horiz, "y": y_for_vert}
+        self.drawRaw()
         self.resetView()
+        self.targets_reset()
+
         # set cb_out
         self.cb_out.currentIndexChanged.disconnect(self.onCbOutChanged)
         for dev in out_devs:
@@ -229,10 +227,10 @@ class DisplayWidget(QMainWindow):
         self.main.setLabel("bottom", self.labels["x"])
         self.horizontal.setLabel("bottom", self.labels["x"])
         self.main.setLabel("left", self.labels["y"])
-        self.vertical.setLabel("bottom", self.labels["y"])
-        self.bar.setLabel("left", self.labels["out"])
+        self.vertical.setLabel("left", self.labels["y"])
         self.horizontal.setLabel("left", self.labels["out"])
-        self.vertical.setLabel("left", self.labels["out"])
+        self.vertical.setLabel("bottom", self.labels["out"])
+        self.bar.setLabel("left", self.labels["out"])
 
     def updateBar(self):
         data = self.image.image
@@ -242,7 +240,7 @@ class DisplayWidget(QMainWindow):
             return
         mini, maxi = np.nanmin(data), np.nanmax(data)
         self.bar.setLevels((mini, maxi))
-
+    
     def updateFilter(self, filter_=None, sigma=None):
         if filter_:
             self.filter_state[0] = filter_
@@ -260,6 +258,7 @@ class DisplayWidget(QMainWindow):
             self.image_rect[3],
             self.image_rect[2],
         )
+        self.targets_reset()
         self.drawRaw()
         self.resetView()
 
@@ -279,6 +278,16 @@ class DisplayWidget(QMainWindow):
         for target in self.targets:
             target.vline.setVisible(boo)
             target.hline.setVisible(boo)
+            target.label.setVisible(boo)
+
+    def targets_reset(self):
+        # reset targets to center of image_rect
+        center = (
+            self.image_rect[0] + self.image_rect[2] / 2,
+            self.image_rect[1] + self.image_rect[3] / 2,
+        )
+        for target in self.targets:
+            target.target.setPos(*center)
 
     # -- utils (no self) --
 
@@ -309,12 +318,11 @@ class Target:
         self.hline = pg.InfiniteLine(
             angle=0, movable=False, pen=pg.mkPen(self.color, width=2)
         )
-        self.horizontal = (
-            self.parent.horizontal.plot()
-        )  # pen=pg.mkPen(self.color, width=2))
-        self.vertical = (
-            self.parent.vertical.plot()
-        )  # pen=pg.mkPen(self.color, width=2))
+
+        self.horizontal = self.parent.horizontal.plot()
+        self.horizontal.setPen(pg.mkPen(self.color, width=1))
+        self.vertical = self.parent.vertical.plot()
+        self.vertical.setPen(pg.mkPen(self.color, width=1))
 
         self.target.setZValue(10)
         self.vline.setZValue(10)
@@ -353,16 +361,15 @@ class Target:
         self.hline.setPos(pos.y())
         if self.parent.image.image is None:
             return
-
-        # print(self.px_x, self.px_y)
         self.update()
 
     def update(self):
+        # update label and traces
         x, y = self._coordToPixel(self.parent.image.image, self.parent.image_rect)
-        self.updateLabel(x, y)
-        self.updateTrace()
+        self._updateLabel(x, y)
+        self._updateTraces(x, y)
 
-    def updateLabel(self, x, y):
+    def _updateLabel(self, x, y):
         if x == -1 or y == -1:
             self.label.setText("")
             return
@@ -370,5 +377,18 @@ class Target:
         # self.label.setText(string if string != 'nan' else '')
         self.label.setText(string)
 
-    def updateTrace(self):
-        pass
+    def _updateTraces(self, x, y):
+        if x != -1:
+            data_col = self.parent.image.image[x]
+            if data_col.shape[0] == self.parent.axes["y"].shape[0]:
+                self.vertical.setData(data_col, self.parent.axes["y"])
+            mi, ma = min(data_col), max(data_col)
+            if str(mi) != 'nan' and str(ma) != 'nan':
+                self.parent.vertical.setXRange(mi, ma)
+        if y != -1:
+            data_row = self.parent.image.image[:, y]
+            if data_row.shape[0] == self.parent.axes["x"].shape[0]:
+                self.horizontal.setData(self.parent.axes["x"], data_row)
+            mi, ma = min(data_row), max(data_row)
+            if str(mi) != 'nan' and str(ma) != 'nan':
+                self.parent.horizontal.setYRange(mi, ma)

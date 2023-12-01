@@ -1,9 +1,10 @@
 from pyHegel import commands as c
+from pyHegel import instruments
 
 
 class Model:
     # The model is the only one doing the pyHegel commands
-    # except for the sweep thread and loading drivers
+    # except for the loading drivers
 
     def getDevice(self, instr, name):
         dev = getattr(instr, name)
@@ -34,8 +35,27 @@ class Model:
         gettable = True if dev._getdev_p is not None else False
         return (settable, gettable)
 
-    def makeDevice(self, base_dev, name, cls, kwargs, parent_instr):
-        base_dev = cls(base_dev, **kwargs)
-        base_dev.instr = parent_instr
-        base_dev.name = name
-        return base_dev
+
+    def makeLogicalDevice(self, base_dev, kwargs):
+        # kwargs = {'scale':{kw scale}, 'ramp':{kw ramp}, 'limit':{kw limit}}
+        # (not dict but OrederedDict)
+        # The order of creation is: 1 scale, 2 ramp, 3 limit
+        limit_cls = instruments.LimitDevice
+        ramp_cls = instruments.RampDevice
+        scale_cls = instruments.ScalingDevice
+        new_dev = base_dev
+        ramp_kw = kwargs.get('ramp', {})
+        if ramp_kw:
+            new_dev = ramp_cls(new_dev, **ramp_kw)
+        
+        scale_kw = kwargs.get('scale', {})
+        if scale_kw:
+            scale_kw['only_val'] = True
+            new_dev = scale_cls(new_dev, **scale_kw)
+
+        limit_kw = kwargs.get('limit', {})
+        if limit_kw:
+            new_dev = limit_cls(new_dev, **limit_kw)
+
+        return new_dev
+
