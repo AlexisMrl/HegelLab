@@ -13,13 +13,13 @@
                     "nickname": "voltageLimit",
                     "ph_name": "volt",
                     "ramp": {"rate": 1},
-                    "scale": {"scale_factor": 1, "offset": 9},
+                    "scale": {"divisor": 2, "offset": 9},
                     "limit": {"min": -10, "max": 10}
                 },
                 {
                     "nickname": "courant",
                     "ph_name": "current",
-                    "scale": {"scale_factor": 10}
+                    "scale": {"multiplier": 10}
                 }
             ]
         },
