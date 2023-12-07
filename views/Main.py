@@ -141,7 +141,7 @@ class Main(QMainWindow):
     def _gui_makeItem(self, tree, gui_dev):
         item = QTreeWidgetItem()
         item.setChildIndicatorPolicy(QTreeWidgetItem.DontShowIndicatorWhenChildless)
-        item.setText(0, gui_dev.getDisplayName("long"))
+        item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
         tree.setData(item, gui_dev)
         tree.addTopLevelItem(item)
 
@@ -160,13 +160,13 @@ class Main(QMainWindow):
     def gui_renameDevice(self, gui_dev):
         item = self.tree_sw.findItemByData(gui_dev)
         if item is not None:
-            item.setText(0, gui_dev.getDisplayName("long"))
+            item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
         item = self.tree_out.findItemByData(gui_dev)
         if item is not None:
-            item.setText(0, gui_dev.getDisplayName("long"))
+            item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
         item = self.tree_log.findItemByData(gui_dev)
         if item is not None:
-            item.setText(0, gui_dev.getDisplayName("long"))
+            item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
 
     def gui_updateSweepValues(self, gui_dev):
         # set sweep values to self.tree_sw.selectedItem()

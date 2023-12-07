@@ -139,27 +139,25 @@ class HegelLab:
             ph_name = dev_dict.get('ph_name')
             nickname = dev_dict.get('nickname', ph_name)
             nickname = self._checkDevNickname(nickname, gui_instr)
-            extra_args = dev_dict.get('extra_args', {})
+            extra_args = dict(dev_dict.get('extra_args', {}))
             # instanciate GuiDevice
             gui_dev = GuiDevice(nickname, ph_name, extra_args, parent=gui_instr)
             
             # limit, scale, ramp
             scale_kw = dict(dev_dict.get('scale', {}))
-            scale_kw['quiet_del'] = True
-            if "divisor" in scale_kw.values():
+            print(scale_kw)
+            if "divisor" in scale_kw.keys():
                 scale_kw['invert_trans'] = True
                 scale_kw['scale_factor'] = scale_kw.pop('divisor')
-            elif "multiplier" in scale_kw.values():
+            elif "multiplier" in scale_kw.keys():
                 scale_kw['scale_factor'] = scale_kw.pop('multiplier')
                 
             gui_dev.logical_kwargs['scale'] = scale_kw
 
             ramp_kw = dict(dev_dict.get('ramp', {}))
-            ramp_kw['quiet_del'] = True
             gui_dev.logical_kwargs['ramp'] = ramp_kw
 
             limit_kw = dict(dev_dict.get('limit', {}))
-            limit_kw['quiet_del'] = True
             gui_dev.logical_kwargs['limit'] = limit_kw
 
             gui_instr.gui_devices.append(gui_dev)

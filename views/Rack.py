@@ -245,7 +245,7 @@ class Rack(QMainWindow):
         self.win_rename.setCentralWidget(wid)
         layout = QVBoxLayout()
         wid.setLayout(layout)
-        lbl = QLabel("New name for: " + data.getDisplayName("short"))
+        lbl = QLabel("New name for: " + data.getDisplayName("long"))
         layout.addWidget(lbl)
         le_value = QLineEdit()
         le_value.setText(data.nickname)
@@ -259,7 +259,7 @@ class Rack(QMainWindow):
 
         def okClicked():
             value = le_value.text()
-            selected_item.setText(0, data.getDisplayName("short"))
+            selected_item.setText(0, data.getDisplayName("long"))
             self.lab.renameDevice(data, value)
             self.win_rename.close()
 
@@ -288,7 +288,7 @@ class Rack(QMainWindow):
         for gui_dev in gui_instr.gui_devices:
             dev_item = QTreeWidgetItem(instr_item)
             self.tree.setData(dev_item, gui_dev)
-            dev_item.setText(0, gui_dev.getDisplayName("short"))
+            dev_item.setText(0, gui_dev.getDisplayName("long"))
             dev_item.setText(
                 1, str(gui_dev.cache_value) if gui_dev.cache_value is not None else ""
             )
@@ -311,7 +311,7 @@ class Rack(QMainWindow):
         item = QTreeWidgetItem()
         self.tree.setData(item, gui_instr)
         item.setFlags(item.flags() & ~Qt.ItemIsDragEnabled)
-        item.setText(0, gui_instr.getDisplayName())
+        item.setText(0, gui_instr.getDisplayName("long"))
         item.setText(2, gui_instr.address)
         item.setText(3, gui_instr.ph_class.__name__)
         item.setFont(3, self.fixed_font)
@@ -342,7 +342,7 @@ class Rack(QMainWindow):
     def gui_renameDevice(self, gui_dev):
         # rename the device item in self.tree
         dev_item = self.tree.findItemByData(gui_dev)
-        dev_item.setText(0, gui_dev.getDisplayName("short"))
+        dev_item.setText(0, gui_dev.getDisplayName("long"))
 
     def gui_updateDeviceValue(self, gui_dev, value):
         # update the value of the item corresponding to gui_dev

@@ -32,12 +32,17 @@
                 {
                     "nickname": "demod_en1",
                     "ph_name": "demod_en",
-                    "extra_args": {"ch": 1}
+                    "extra_args": {"ch": 0}
                 },
                 {
                     "nickname": "demod_en2",
                     "ph_name": "demod_en",
-                    "extra_args": {"ch": 2}
+                    "extra_args": {"ch": 1}
+                },
+                {
+                    "nickname": "readval1",
+                    "ph_name": "readval",
+                    "extra_args": {"ch": 1, "vals": ["r", "deg"]}
                 }
             ]
         },

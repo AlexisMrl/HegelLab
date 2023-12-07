@@ -47,15 +47,17 @@ class Model:
         ramp_kw = kwargs.get('ramp', {})
         if ramp_kw:
             new_dev = ramp_cls(new_dev, **ramp_kw)
+            new_dev._quiet_del = True
         
         scale_kw = kwargs.get('scale', {})
         if scale_kw:
-            scale_kw['only_val'] = True
             new_dev = scale_cls(new_dev, **scale_kw)
+            new_dev._quiet_del = True
 
         limit_kw = kwargs.get('limit', {})
         if limit_kw:
             new_dev = limit_cls(new_dev, **limit_kw)
+            new_dev._quiet_del = True
 
         return new_dev
 

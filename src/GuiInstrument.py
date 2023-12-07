@@ -63,22 +63,22 @@ class GuiDevice:
             return (dev, self.extra_args)
         return dev
 
-    def getDisplayName(self, type="short"):
+    def getDisplayName(self, type="short", with_instr=False):
         # type: 'short' or 'long'
-        #   short: nickname + ph_name
-        #   long: instr.nickname + nickname + ph_name
+        #   short: nickname
+        #   long: nickname (ph_name, extra_args)
+        # with_instr: True or False
+        #   True: instr_nickname - getDisplayName(type)
         nickname = self.nickname
-        if self.extra_args != {}:
-            str_args = [str(k) + "=" + str(v) for k, v in self.extra_args.items()]
-            nickname = nickname + ", " + "".join(str_args)
+        ph_name = self.ph_name
+
+        if with_instr:
+            nickname = self.parent.nickname + " - " + nickname
 
         if type == "short":
-            if self.nickname != self.ph_name:
-                return self.nickname + " (" + self.ph_name + ")"
-            return self.nickname
+            return nickname
+        
         if type == "long":
-            if self.nickname != self.ph_name:
-                return (
-                    self.parent.nickname + " - " + self.nickname + " (" + self.ph_name + ")"
-                )
-            return self.parent.nickname + " - " + self.nickname
+            if self.extra_args != {}:
+                ph_name += ", " + str(self.extra_args)
+            return nickname + " (" + ph_name + ")"
