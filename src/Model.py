@@ -35,7 +35,6 @@ class Model:
         gettable = True if dev._getdev_p is not None else False
         return (settable, gettable)
 
-
     def makeLogicalDevice(self, base_dev, kwargs):
         # kwargs = {'scale':{kw scale}, 'ramp':{kw ramp}, 'limit':{kw limit}}
         # (not dict but OrederedDict)

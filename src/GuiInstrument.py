@@ -46,7 +46,7 @@ class GuiDevice:
         # not kept when saving
         self.ph_dev = None
         self.ph_choice = None  # ChoiceString from pyHegel
-        self.type = (False, False)  # (settable, gettable)
+        self.type = (None, None)  # (settable, gettable) = (T/F, T/F)
         self.sweep = [None, None, None]  # [start, stop, npts]
         self.cache_value = None  # a variable to cache the last value read
 

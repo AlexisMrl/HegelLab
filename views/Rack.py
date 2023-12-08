@@ -40,6 +40,7 @@ class Rack(QMainWindow):
         self.actionAdd.triggered.connect(self.onLoadInstrument)
         self.actionRemove.triggered.connect(self.onRemoveInstrument)
         self.actionLoad.triggered.connect(self.onActionLoad)
+        self.actionConfig.triggered.connect(self.onActionConfig)
         self.tree.itemSelectionChanged.connect(self.onSelectionChanged)
         self.tree.itemDoubleClicked.connect(self.onDoubleClick)
         self.pb_get.clicked.connect(self.onGetValue)
@@ -52,6 +53,7 @@ class Rack(QMainWindow):
             # when nothing is selected
             self.actionRemove.setEnabled(False)
             self.actionLoad.setEnabled(False)
+            self.actionConfig.setEnabled(False)
             self.pb_get.setEnabled(False)
             self.pb_set.setEnabled(False)
             self.pb_rename.setEnabled(False)
@@ -62,6 +64,7 @@ class Rack(QMainWindow):
             # when an instrument is selected
             self.actionRemove.setEnabled(True)
             self.actionLoad.setEnabled(True)
+            self.actionConfig.setEnabled(True if data.ph_instr != None else False)
             self.pb_get.setEnabled(False)
             self.pb_set.setEnabled(False)
             self.pb_rename.setEnabled(False)
@@ -70,6 +73,7 @@ class Rack(QMainWindow):
             # when a device is selected
             self.actionRemove.setEnabled(False)
             self.actionLoad.setEnabled(False)
+            self.actionConfig.setEnabled(False)
             self.pb_get.setEnabled(True)
             self.pb_rename.setEnabled(True)
             gui_dev = data
@@ -79,9 +83,7 @@ class Rack(QMainWindow):
                 self.pb_set.setEnabled(False)
 
     def onDoubleClick(self, item, _):
-        print("double click")
         data = self.tree.getData(item)
-        print("find: ", data)
         if isinstance(data, GuiInstrument):
             pass
         elif isinstance(data, GuiDevice):
@@ -137,6 +139,10 @@ class Rack(QMainWindow):
         selected_item = self.tree.selectedItem()
         self.lab.loadGuiInstrument(self.tree.getData(selected_item))
 
+    def onActionConfig(self):
+        selected_item = self.tree.selectedItem()
+        self.lab.showConfig(self.tree.getData(selected_item))
+
     def onRemoveInstrument(self):
         # get parent selected item:
         selected_item = self.tree.selectedItem()
@@ -188,6 +194,7 @@ class Rack(QMainWindow):
         for instrument in self.lab.instr_list:
             cb_instr.addItem(instrument.get('name'), instrument)
 
+
         def cbInstrChanged(settings):
             address = settings.get('address', None)
             if address:
@@ -211,7 +218,7 @@ class Rack(QMainWindow):
         )
 
         # ok and cancel buttons in a horizontal layout
-        bt_ok = QPushButton("Load")
+        bt_ok = QPushButton("Import")
         bt_cancel = QPushButton("Cancel")
         Hlayout = QHBoxLayout()
         Hlayout.addWidget(bt_ok)
@@ -300,6 +307,7 @@ class Rack(QMainWindow):
                     (True, False): "set",
                     (False, True): "get",
                     (False, False): "?",
+                    (None, None): "?",
                 }[gui_dev.type],
             )
             dev_item.setText(

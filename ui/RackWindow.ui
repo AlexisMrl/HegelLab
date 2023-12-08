@@ -29,7 +29,7 @@
       </column>
       <column>
        <property name="text">
-        <string>Address</string>
+        <string>Address / Parameters</string>
        </property>
       </column>
       <column>
@@ -116,7 +116,7 @@
      <x>0</x>
      <y>0</y>
      <width>813</width>
-     <height>26</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuImport">
@@ -137,6 +137,9 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
@@ -147,6 +150,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionLoad"/>
+   <addaction name="actionConfig"/>
    <addaction name="separator"/>
    <addaction name="actionAdd"/>
    <addaction name="actionRemove"/>
@@ -191,7 +195,10 @@
      <normaloff>../resources/load.svg</normaloff>../resources/load.svg</iconset>
    </property>
    <property name="text">
-    <string>load/reload</string>
+    <string>(re)load</string>
+   </property>
+   <property name="toolTip">
+    <string>Load (reload) instrument</string>
    </property>
   </action>
   <action name="actionto_JSON">
@@ -207,6 +214,21 @@
   <action name="actionfrom_JSON">
    <property name="text">
     <string>from JSON</string>
+   </property>
+  </action>
+  <action name="actionConfig">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../resources/config.svg</normaloff>../resources/config.svg</iconset>
+   </property>
+   <property name="text">
+    <string>config</string>
+   </property>
+   <property name="toolTip">
+    <string>Show instrument config window (if it exists)</string>
    </property>
   </action>
  </widget>

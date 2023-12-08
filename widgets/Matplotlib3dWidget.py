@@ -1,19 +1,29 @@
 # -*- coding: utf-8 -*-
-from matplotlibfig import *
 from PyQt5 import QtCore, QtWidgets
 
 from numpy import radians, pi, sin, cos
 import numpy as np
 
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
 
-class MatPlotLibPlaneVis(MatplotlibWidget):
+class Matplotlib3dWidget(QtWidgets.QWidget):
     #
     # this widget allows to plot rotation settings for the magnets
     #
     def __init__(self, *args, **kwargs):
-        MatplotlibWidget.__init__(self, size=(1.0, 3.0), dpi=100)
+        super(Matplotlib3dWidget, self).__init__()
+        self.fig = Figure((1.0, 3.0), dpi=100)
+        self.canvas = FigureCanvas(self.fig)
+        self.canvas.setParent(self)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+
+        self.vbox = QtWidgets.QVBoxLayout()
+        self.vbox.addWidget(self.toolbar)
+        self.vbox.addWidget(self.canvas)
+
+        self.setLayout(self.vbox)
         #self.canvas.setFocusPolicy(QtCore.Qt.StrongFocus)
 
          # checkbox to toggle plot
@@ -27,7 +37,6 @@ class MatPlotLibPlaneVis(MatplotlibWidget):
         self.cartesian = True
 
         # create the figure
-        self.fig = self.getFigure()
         self.fig.suptitle('Field path')
         self.ax = self.fig.add_subplot(111, projection='3d')
         self.ax.set_xlim([-self.max_r, self.max_r])
@@ -48,7 +57,7 @@ class MatPlotLibPlaneVis(MatplotlibWidget):
 
         self.first_vector = np.array([1, 0, 0]) # x, y, z
         self.normal_vector = np.array([0, 0, 1])
-        self.end_vector = np.array([0, 1, 0])
+        self.last_vector = np.array([0, 1, 0])
         self.plane = self.compute_plane()
         self.all_points = []
 
@@ -84,23 +93,23 @@ class MatPlotLibPlaneVis(MatplotlibWidget):
             self.trace_surface(self.plane)
         
         self.trace_vector(self.first_vector)
-        self.trace_vector(self.end_vector)
+        self.trace_vector(self.last_vector)
         if self.show_normal_vector:
             self.trace_vector(self.normal_vector, color='grey', alpha=0.5, marker='')
 
         if len(self.all_points) > 0:
             if np.allclose(self.all_points.T[0], self.first_vector) \
-                and np.allclose(self.all_points.T[-1], self.end_vector):
+                and np.allclose(self.all_points.T[-1], self.last_vector):
                 for i, xyz in enumerate(self.all_points.T):
                     self.trace_vector(xyz, alpha=1)
                     if self.line_path and i > 0:
                         self.trace_vector(xyz, self.all_points.T[i-1], linestyle='dotted', marker='')
 
-        self.draw()
+        self.canvas.draw()
 
     def clear_plot(self):
         self.ax.clear()
-        self.draw()
+        self.canvas.draw()
     
     def toggle_plot(self, state):
         if state == QtCore.Qt.Checked:
@@ -123,8 +132,8 @@ class MatPlotLibPlaneVis(MatplotlibWidget):
         self.do_plot()
         return xyz
     
-    def set_end_vector(self, xyz):
-        self.end_vector = xyz
+    def set_last_vector(self, xyz):
+        self.last_vector = xyz
         self.do_plot()
         return xyz
 

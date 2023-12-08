@@ -39,6 +39,9 @@ class HegelLab:
         self.view_console.push_vars({"vd": self.view_display})
         self.view_console.push_vars({"vc": self.view_console})
 
+        self._wins = [] # bypass the ramasse miette
+        self._instr_loading_thread = None # same
+
         # data
         self.instr_list = self.loader.importJsonFile('instruments.json')
         self.gui_instruments = []  # list of GuiInstrument in rack
@@ -80,18 +83,6 @@ class HegelLab:
                 self.app.closeAllWindows()
         else:
             event.ignore()
-
-    def showInstrumentConfig(self, gui_instr):
-        # launch the config window for the selected instrument
-        # self.view_rack.setEnabled(False)
-        # self.view_rack.window_configInstrument(gui_instr)
-        print(gui_instr.nickname)
-
-    def showDeviceConfig(self, gui_dev):
-        # launch the config window for the selected device
-        # self.view_rack.setEnabled(False)
-        # self.view_rack.window_configDevice(gui_dev)
-        print(gui_dev.nickname)
     
     def getGuiInstrument(self, instr_nickname):
         for gui_instr in self.gui_instruments:
@@ -134,7 +125,7 @@ class HegelLab:
         return gui_instr
     
     def _instanciateGuiDevices(self, gui_instr, instr_dict):
-        devices = instr_dict.get('devices')
+        devices = instr_dict.get('devices', [])
         for dev_dict in devices:
             ph_name = dev_dict.get('ph_name')
             nickname = dev_dict.get('nickname', ph_name)
@@ -142,10 +133,11 @@ class HegelLab:
             extra_args = dict(dev_dict.get('extra_args', {}))
             # instanciate GuiDevice
             gui_dev = GuiDevice(nickname, ph_name, extra_args, parent=gui_instr)
-            
+            # type
+            setget = dict(dev_dict.get('type', dict(set=None, get=None)))
+            gui_dev.type = (setget['set'], setget['get'])
             # limit, scale, ramp
             scale_kw = dict(dev_dict.get('scale', {}))
-            print(scale_kw)
             if "divisor" in scale_kw.keys():
                 scale_kw['invert_trans'] = True
                 scale_kw['scale_factor'] = scale_kw.pop('divisor')
@@ -179,23 +171,25 @@ class HegelLab:
 
         self.view_rack.win_create_dev.close()
 
-    def _loadGuiInstrument(self, gui_instr):
+    def loadGuiInstrument(self, gui_instr):
         # try loading a GuiInstrument == set its ph_instr attribute
         try:
-            gui_instr.driver.load(gui_instr)
+            gui_instr.driver.load(self, gui_instr)
         except Exception as e:
             tb_str = "".join(traceback.format_tb(e.__traceback__))
             self.pop.instrLoadError(e, tb_str)
-            return False
-        return True
 
-    def _loadGuiDevices(self, gui_instr):
+    def loadGuiDevices(self, gui_instr):
         for gui_dev in gui_instr.gui_devices:
             try:
                 gui_dev.ph_dev = self.model.getDevice(
                     gui_instr.ph_instr, gui_dev.ph_name
                 )
-                gui_dev.type = self.model.devType(gui_dev.ph_dev)
+                # type
+                detected_type = self.model.devType(gui_dev.ph_dev)
+                type = [detected_type[0] if gui_dev.type[0] is None else gui_dev.type[0],
+                        detected_type[1] if gui_dev.type[1] is None else gui_dev.type[1]]
+                gui_dev.type = tuple(type)
                 gui_dev.ph_choice = self.model.getChoices(gui_dev.ph_dev)
             except Exception as e:
                 tb_str = "".join(traceback.format_tb(e.__traceback__))
@@ -208,11 +202,6 @@ class HegelLab:
             except Exception as e:
                 tb_str = "".join(traceback.format_tb(e.__traceback__))
                 self.pop.devLoadLogicalError(e, tb_str)
-    
-    def loadGuiInstrument(self, gui_instr):
-        # control flow for loading a GuiInstrument
-        if self._loadGuiInstrument(gui_instr):
-            self._loadGuiDevices(gui_instr)
         self.view_rack.gui_updateGuiInstrument(gui_instr)
 
     def removeGuiInstrument(self, gui_instr):
@@ -283,7 +272,7 @@ class HegelLab:
         self.view_main.gui_addLogItem(gui_dev)
 
     def showSweepConfig(self, gui_dev):
-        # launch the config window for gui_dev sweep device
+        # launch the sweep config window for gui_dev
         driver_cls = gui_dev.parent.driver
         driver_cls.sweep(self, gui_dev)
 
@@ -291,6 +280,11 @@ class HegelLab:
         # set sweep values for gui_dev and update the gui
         gui_dev.sweep = [start, stop, npts]
         self.view_main.gui_updateSweepValues(gui_dev)
+    
+    def showConfig(self, gui_instr):
+        # launch the driver config window
+        driver_cls = gui_instr.driver
+        driver_cls.config(self, gui_instr)
 
     # -- SWEEP THREAD --
 

@@ -135,7 +135,7 @@ class Popup:
 
     def notSettable(self):
         return self._popYesNo(
-            "Not settable", "This device is not settable. Try sweeping it anyway?"
+            "Not settable", "This device is detected as not settable. Try sweeping it anyway?"
         )
 
     def notGettable(self):
