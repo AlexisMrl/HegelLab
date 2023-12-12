@@ -5,14 +5,14 @@ class LoaderSaver:
     def __init__(self, lab):
         self.lab = lab
         
-    def importJsonFile(self, path='instruments.json'):
+    def importFromJSON(self, path='instruments.json'):
         # return path.json as a dict
         with open(path) as json_file:
             data = json.load(json_file, object_pairs_hook=OrderedDict)
         instruments = data.get('instruments')
         return instruments
 
-    def exportRackToJson(self, gui_instruments, path="temp/rack.json"):
+    def exportToJSON(self, gui_instruments, path="temp/rack.json"):
         # export gui_instruments to json file
         list_of_dict = []
         for gui_instr in gui_instruments:
@@ -21,7 +21,7 @@ class LoaderSaver:
         json_dict = {'instruments': list_of_dict}
         
         with open(path, 'w') as outfile:
-            json.dump(json_dict, outfile)
+            json.dump(json_dict, outfile, indent=4)
 
     def exportToPyHegel(self, gui_instruments):
         # export rack to pyHegel loading code

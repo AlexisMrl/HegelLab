@@ -61,9 +61,9 @@ class Main(QMainWindow):
         # console button
         self.btn_console = QAction(QtGui.QIcon("resources/console.svg"), "Console")
         self.btn_console.triggered.connect(lambda: lab.showConsole())
-        self.toolBar.insertAction(self.toolBar.actions()[0], self.btn_console)
+        #self.toolBar.insertAction(self.toolBar.actions()[0], self.btn_console)
         # width for first column for tree:
-        self.tree_sw.setColumnWidth(0, 200)
+        self.tree_sw.setColumnWidth(0, 340)
         # before_wait:
         self.sb_before_wait.setMinimum(0)
 
@@ -132,6 +132,7 @@ class Main(QMainWindow):
 
     def triggerStartSweep(self):
         # ask the lab to start the sweep
+        self.gui_sweepStarting
         self.lab.startSweep()
 
     def closeEvent(self, event):
@@ -183,6 +184,9 @@ class Main(QMainWindow):
 
     def gui_getLogGuiDevs(self):
         return [self.tree_log.getData(item) for item in self.tree_log]
+    
+    def gui_sweepStarting(self):
+        self.sweep_status.setText("Starting")
 
     def gui_sweepStarted(self):
         self.pause_button.setEnabled(True)

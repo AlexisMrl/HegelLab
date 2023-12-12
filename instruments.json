@@ -1,10 +1,9 @@
 {
     "instruments": [
         {
-            "name": "Dummy device",
+            "name": "dummy",
             "ph_class": "instruments.dummy",
             "address": "",
-            "driver": "Drivers.Default",
             "devices": [
                 {
                     "ph_name": "rand"
@@ -13,19 +12,19 @@
                     "nickname": "voltageLimit",
                     "ph_name": "volt",
                     "ramp": {"rate": 1},
-                    "scale": {"divisor": 2, "offset": 9},
+                    "scale": {"factor": 2},
                     "limit": {"min": -10, "max": 10}
                 },
                 {
                     "nickname": "courant",
                     "ph_name": "current",
-                    "scale": {"multiplier": 10}
+                    "scale": {"factor": 10}
                 }
             ]
         },
 
         {
-            "name": "Zurich Instrument UHFLI",
+            "name": "zurich_UHF",
             "ph_class": "instruments.zurich_UHF",
             "address": "dev2021",
             "devices": [
@@ -48,7 +47,7 @@
         },
 
         {
-            "name": "iTest Bilt BE214x",
+            "name": "iTest_Be214x",
             "ph_class": "instruments.iTest_be214x",
             "address": "TCPIP::192.168.150.145::5025::SOCKET",
             "slots": [1, 2, 3, 4],
@@ -67,7 +66,7 @@
         },
 
         {
-            "name": "Digit Multimeter 34465A",
+            "name": "agilent_multi_34410A",
             "ph_class": "instruments.agilent_multi_34410A",
             "address": "USB0::0x2A8D::0x0101::MY57515472::0",
             "devices": [
@@ -79,7 +78,7 @@
             
 
         {
-            "name": "AMI430 magnet vector",
+            "name": "AMI430_magnet_vector",
             "ph_class": "instruments.AmericanMagnetics_vector",
             "driver": "Drivers.ami430",
             "address_x": "tcpip::192.168.137.138::7180::socket",

@@ -126,6 +126,11 @@ class Popup:
     def sweepNoOutputDevice(self):
         return self._popYesNo("No output device", "No output device is set. Continue?")
 
+    def devNotLoaded(self):
+        return self._popYesNo(
+            "Device not loaded", "This device is not loaded. Continue?"
+        )
+
     def askRemoveInstrument(self, nickname):
         msg = "Are you sure you want to remove " + nickname + "?"
         return self._popYesNo("Remove instrument", msg)

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg id="svg5918" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://www.w3.org/2000/svg" height="16" viewBox="0 0 16.000017 16.000017" width="16" version="1.1" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/">
+ <metadata id="metadata5923">
+  <rdf:RDF>
+   <cc:Work rdf:about="">
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title/>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <g id="layer1" transform="translate(-182.94 -560.72)">
+  <g id="g6413" transform="translate(-769.06 364.36)">
+   <rect id="rect6415" style="color:#000000" stroke-dashoffset="0.6" height="16" width="16" stroke-dasharray="1.5, 1.50000000000000000" y="196.36" x="952" stroke-width="1.5" fill="none"/>
+   <path id="path4389" stroke-linejoin="round" style="color:#000000" fill="#f99b11" transform="matrix(2.28 0 0 2.437 -1228.8 -294.16)" stroke="#f99b11" stroke-width=".84848" d="m963.07 207.03h-6.1498l3.08-5.33z"/>
+   <path id="rect4391" stroke-linejoin="round" style="color:#000000" d="m7 5v5h2v-5h-2zm0 6v2h2v-2h-2z" transform="translate(952 196.36)" stroke-width="2" fill="#111"/>
+  </g>
+ </g>
+</svg>

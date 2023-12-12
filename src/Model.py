@@ -35,28 +35,36 @@ class Model:
         gettable = True if dev._getdev_p is not None else False
         return (settable, gettable)
 
-    def makeLogicalDevice(self, base_dev, kwargs):
+    def makeLogicalDevice(self, basedev, gui_dev_kwargs, instrument):
         # kwargs = {'scale':{kw scale}, 'ramp':{kw ramp}, 'limit':{kw limit}}
         # (not dict but OrederedDict)
         # The order of creation is: 1 scale, 2 ramp, 3 limit
         limit_cls = instruments.LimitDevice
         ramp_cls = instruments.RampDevice
         scale_cls = instruments.ScalingDevice
-        new_dev = base_dev
-        ramp_kw = kwargs.get('ramp', {})
+
+        new_dev = basedev
+        
+        ramp_kw = gui_dev_kwargs.get('ramp', {}).copy()
+        scale_kw = gui_dev_kwargs.get('scale', {}).copy()
+        limit_kw = gui_dev_kwargs.get('limit', {}).copy()
+
         if ramp_kw:
             new_dev = ramp_cls(new_dev, **ramp_kw)
             new_dev._quiet_del = True
         
-        scale_kw = kwargs.get('scale', {})
         if scale_kw:
+            scale_kw["invert_trans"] = True
+            scale_kw["scale_factor"] = scale_kw.pop("factor")
             new_dev = scale_cls(new_dev, **scale_kw)
             new_dev._quiet_del = True
 
-        limit_kw = kwargs.get('limit', {})
         if limit_kw:
             new_dev = limit_cls(new_dev, **limit_kw)
             new_dev._quiet_del = True
+        
+        setattr(instrument, f"wrap_{basedev.name}", new_dev)
+        instrument._create_devs_helper()
 
         return new_dev
 

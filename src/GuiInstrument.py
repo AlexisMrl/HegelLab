@@ -15,12 +15,22 @@ class GuiInstrument:
         self.ph_instr = None
         self.gui_devices = []  # list of GuiDevice
 
-    def getDisplayName(self, type=""):
-        # 'type' for consistency with GuiDevice
-        if self.nickname != self.instr_name:
-            return self.nickname + " (" + self.instr_name + ")"
+    def getDisplayName(self, type="short"):
+        # 'type'
+        #   short: nickname
+        #   long: nickname (ph_name, extra_args)
+        
+        if type == "short":
+            return self.nickname
+
+        class_name = self.ph_class.split(".")[-1]
+        if self.nickname != class_name:
+            return f"{self.nickname} ({class_name})"
         else:
             return self.nickname
+    
+    def isLoaded(self):
+        return self.ph_instr is not None
     
     def getGuiDevice(self, dev_nickname):
         for gui_device in self.gui_devices:
@@ -28,6 +38,25 @@ class GuiInstrument:
                 continue
             return gui_device
         return None
+
+    def toDict(self):
+        # for json file saving
+        d = {
+            'nickname': self.nickname,
+            'instr_name': self.instr_name,
+            'ph_class': self.ph_class,
+            'driver': self.driver,
+        }
+        if self.address is not None:
+            d['address'] = self.address
+        if self.slot is not None:
+            d['slot'] = self.slot
+        d['gui_devices'] = []
+        for gui_dev in self.gui_devices:
+            d['gui_devices'].append(gui_dev.toDict())
+
+        return d
+
     
 
 
@@ -55,8 +84,8 @@ class GuiDevice:
         self.values = None
         self.sw_idx = None  # SweepIdxIter object
 
-    def getPhDev(self):
-        if self.logical_dev is not None:
+    def getPhDev(self, basedev=False):
+        if self.logical_dev is not None and not basedev:
             return self.logical_dev
         dev = self.ph_dev
         if self.extra_args != {}:
@@ -81,4 +110,25 @@ class GuiDevice:
         if type == "long":
             if self.extra_args != {}:
                 ph_name += ", " + str(self.extra_args)
+            if self.nickname == ph_name:
+                return nickname
             return nickname + " (" + ph_name + ")"
+    
+    def isLoaded(self):
+        return self.ph_dev is not None
+    
+    def toDict(self):
+        # for json file saving
+        d = {
+            'nickname': self.nickname,
+            'ph_name': self.ph_name,
+        }
+        if self.extra_args != {}:
+            d['extra_args'] = self.extra_args
+        if self.logical_kwargs['scale'] != {}:
+            d['scale'] = self.logical_kwargs['scale']
+        if self.logical_kwargs['ramp'] != {}:
+            d['ramp'] = self.logical_kwargs['ramp']
+        if self.logical_kwargs['limit'] != {}:
+            d['limit'] = self.logical_kwargs['limit']
+        return d

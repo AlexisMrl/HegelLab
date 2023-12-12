@@ -60,7 +60,7 @@ class TreeWidget(QTreeWidget):
         self.takeTopLevelItem(item_index)
 
     def mimeTypes(self):
-        # define the mime types that can be dragged
+        # define the mime types that can be dropped
         return ["device-nickname", "instrument-nickname"]
 
     def mimeData(self, items):

@@ -20,7 +20,7 @@ import os
 
 
 class HegelLab:
-    def __init__(self, app):
+    def __init__(self, app=None):
         self.app = app
         self.loader = LoaderSaver.LoaderSaver(self)
         self.pop = Popup.Popup()
@@ -29,21 +29,12 @@ class HegelLab:
         self.view_main = Main.Main(self)
         self.view_rack = Rack.Rack(self)
         self.view_display = Display.Display(self)
-        self.view_console = Console.Console(self)
-        
-        # push variables to console
-        self.view_console.push_vars({"hl": self})
-        self.view_console.push_vars({"app": self.app})
-        self.view_console.push_vars({"vm": self.view_main})
-        self.view_console.push_vars({"vr": self.view_rack})
-        self.view_console.push_vars({"vd": self.view_display})
-        self.view_console.push_vars({"vc": self.view_console})
 
         self._wins = [] # bypass the ramasse miette
         self._instr_loading_thread = None # same
 
         # data
-        self.instr_list = self.loader.importJsonFile('instruments.json')
+        self.instr_list = self.loader.importFromJSON('instruments.json')
         self.gui_instruments = []  # list of GuiInstrument in rack
 
         # sweep related
@@ -68,17 +59,12 @@ class HegelLab:
     def showDisplay(self, dual=None):
         self.view_display.show_(dual)
         self.view_display.raise_()
-    
-    def showConsole(self):
-        self.view_console.show()
-        self.view_console.raise_()
 
     def askClose(self, event):
         if self.pop.askQuit():
             self.view_main.close()
             self.view_rack.close()
             self.view_display.close()
-            self.view_console.close()
             if self.app is not None:
                 self.app.closeAllWindows()
         else:
@@ -117,8 +103,10 @@ class HegelLab:
         # loading is done in loadGuiInstrument.
         nickname = self._checkInstrNickname(nickname)
         instr_name = instr_dict.get('name')
-        ph_class = eval(instr_dict.get('ph_class'))
-        driver = eval(instr_dict.get('driver', 'Drivers.Default'))
+        #ph_class = eval(instr_dict.get('ph_class'))
+        ph_class = instr_dict.get('ph_class')
+        #driver = eval(instr_dict.get('driver', 'Drivers.Default'))
+        driver = instr_dict.get('driver', 'Drivers.Default')
         # instanciate GuiInstrument
         gui_instr = GuiInstrument(nickname, instr_name, ph_class, driver, addr, slot)
         gui_instr.instr_dict = instr_dict
@@ -138,12 +126,6 @@ class HegelLab:
             gui_dev.type = (setget['set'], setget['get'])
             # limit, scale, ramp
             scale_kw = dict(dev_dict.get('scale', {}))
-            if "divisor" in scale_kw.keys():
-                scale_kw['invert_trans'] = True
-                scale_kw['scale_factor'] = scale_kw.pop('divisor')
-            elif "multiplier" in scale_kw.keys():
-                scale_kw['scale_factor'] = scale_kw.pop('multiplier')
-                
             gui_dev.logical_kwargs['scale'] = scale_kw
 
             ramp_kw = dict(dev_dict.get('ramp', {}))
@@ -160,24 +142,24 @@ class HegelLab:
         gui_instr = self._instanciateGuiInstrument(nickname, addr, slot, instr_dict)
         self._instanciateGuiDevices(gui_instr, instr_dict)
         self.gui_instruments.append(gui_instr)
-        # loading
-        #self._loadGuiInstrument(gui_instr)
-        #self._loadGuiDevices(gui_instr)
+        # loading (not sure, featurewise)
+        #self.loadGuiInstrument(gui_instr)
+        #self.loadGuiDevices(gui_instr)
 
         # "signals"
         self.view_rack.gui_addGuiInstrument(gui_instr)
         self.view_rack.win_add.close()
-        self.view_console.push_vars({gui_instr.nickname: gui_instr.ph_instr})
-
-        self.view_rack.win_create_dev.close()
 
     def loadGuiInstrument(self, gui_instr):
-        # try loading a GuiInstrument == set its ph_instr attribute
-        try:
-            gui_instr.driver.load(self, gui_instr)
-        except Exception as e:
-            tb_str = "".join(traceback.format_tb(e.__traceback__))
-            self.pop.instrLoadError(e, tb_str)
+        # ask for loading a GuiInstrument 
+        # the driver must set the gui_instr.ph_instr attribute
+        # if it fails, it must raise an exception and call loadGuiInstrumentError
+        eval(gui_instr.driver).load(self, gui_instr)
+    
+    def loadGuiInstrumentError(self, gui_instr, exception):
+        tb_str = "".join(traceback.format_tb(exception.__traceback__))
+        self.pop.instrLoadError(exception, tb_str)
+        self.view_rack.gui_updateGuiInstrument(gui_instr)
 
     def loadGuiDevices(self, gui_instr):
         for gui_dev in gui_instr.gui_devices:
@@ -195,14 +177,20 @@ class HegelLab:
                 tb_str = "".join(traceback.format_tb(e.__traceback__))
                 self.pop.devLoadError(e, tb_str)
                 continue
-            
             # logical device
-            try:
-                gui_dev.logical_dev = self.model.makeLogicalDevice(gui_dev.getPhDev(), gui_dev.logical_kwargs)
-            except Exception as e:
-                tb_str = "".join(traceback.format_tb(e.__traceback__))
-                self.pop.devLoadLogicalError(e, tb_str)
+            self.loadGuiLogicalDevice(gui_dev)
+
         self.view_rack.gui_updateGuiInstrument(gui_instr)
+            
+    def loadGuiLogicalDevice(self, gui_dev):
+        try:
+            basedev = gui_dev.getPhDev(basedev=True)
+            gui_dev.logical_dev = self.model.makeLogicalDevice(basedev,
+                                                               gui_dev.logical_kwargs,
+                                                               gui_dev.parent.ph_instr)
+        except Exception as e:
+            tb_str = "".join(traceback.format_tb(e.__traceback__))
+            self.pop.devLoadLogicalError(e, tb_str)
 
     def removeGuiInstrument(self, gui_instr):
         if self.pop.askRemoveInstrument(gui_instr.nickname) == False:
@@ -243,6 +231,9 @@ class HegelLab:
     def addSweepDev(self, instr_nickname, dev_nickname):
         # add a device to the sweep tree, launch the config window
         gui_dev = self.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
+        
+        if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
+            return
 
         if gui_dev.type[0] == False and self.pop.notSettable() == False:
             # if the device is not gettable, ask if we want to add it anyway
@@ -256,6 +247,8 @@ class HegelLab:
     def addOutputDev(self, instr_nickname, dev_nickname):
         # add a device to the output tree
         gui_dev = self.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
+        if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
+            return
         if gui_dev.type[1] == False and self.pop.notGettable() == False:
             return
         if self.view_main.tree_out.findItemByData(gui_dev) != None:
@@ -266,6 +259,9 @@ class HegelLab:
     def addLogDev(self, instr_nickname, dev_nickname):
         # add a device to the log tree
         gui_dev = self.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
+        if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
+            return
+            
         if self.view_main.tree_log.findItemByData(gui_dev) != None:
             self.pop.devAlreadyHere()
             return
@@ -273,7 +269,7 @@ class HegelLab:
 
     def showSweepConfig(self, gui_dev):
         # launch the sweep config window for gui_dev
-        driver_cls = gui_dev.parent.driver
+        driver_cls = eval(gui_dev.parent.driver)
         driver_cls.sweep(self, gui_dev)
 
     def setSweepValues(self, gui_dev, start, stop, npts):
@@ -283,8 +279,17 @@ class HegelLab:
     
     def showConfig(self, gui_instr):
         # launch the driver config window
-        driver_cls = gui_instr.driver
+        driver_cls = eval(gui_instr.driver)
         driver_cls.config(self, gui_instr)
+    
+    def exportToJSON(self):
+        self.loader.exportToJSON(self.gui_instruments, 'temp/rack.json')
+    
+    def importFromJSON(self):
+        self.loader.importFromJSON('temp/rack.json')
+    
+    def exportToPyHegel(self):
+        self.loader.exportPyHegel(self.gui_instruments)
 
     # -- SWEEP THREAD --
 
@@ -431,18 +436,12 @@ class HegelLab:
         self.loop_control.abort_enabled = True
         self.loop_control.pause_enabled = False  # in case of Pause->Abort
 
-def run(with_app=True):
-
-    app = None
-    if with_app:
-        app = QApplication(sys.argv)
-        app.setApplicationDisplayName("HegelLab")
-    hl = HegelLab(app)
-
-    # splash screen
+if __name__ == "__main__":
     from PyQt5.QtWidgets import QSplashScreen
     from PyQt5.QtGui import QPixmap
     from PyQt5 import QtCore
+
+    
     pixmap = QPixmap("./resources/favicon/favicon.png")
     pixmap = pixmap.scaled(256, 256)
     splash = QSplashScreen(pixmap)
@@ -451,19 +450,10 @@ def run(with_app=True):
         alignment=QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter,
         color=QtCore.Qt.white,
     )
+
     splash.show()
+
+    hl = HegelLab()
     splash.finish(hl.view_main)
 
     hl.showMain()
-    
-    # TODO: redirect to console
-    if with_app:
-        sys.stdout = open("logs/stdout.log", "w")
-        sys.stderr = open("logs/stderr.log", "w")
-        sys.exit(app.exec_())
-    
-    return hl
-
-if __name__ == "__main__":
-    args = sys.argv[1:]
-    hl = run(with_app= "--no-app" not in args)

@@ -1,5 +1,5 @@
 from pyHegel.gui import ScientificSpinBox
-from pyHegel import instruments
+from pyHegel import instruments, instruments_base
 from PyQt5 import QtGui, uic
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import (
@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import (
 ####################
 class LoadThread(QThread):
     loaded_signal = pyqtSignal(object)
-    error_signal = pyqtSignal()
+    error_signal = pyqtSignal(object)
 
     def __init__(self, nickname, cls, address=None, kwargs={}):
         super(LoadThread, self).__init__()
@@ -27,13 +27,20 @@ class LoadThread(QThread):
         self.kwargs = kwargs
         self.nickname = nickname
 
-    def run(self):
+    def _run(self):
         if self.address:
             instr = self.cls(self.address, **self.kwargs)
         else:
             instr = self.cls(**self.kwargs)
         instr.header.set(self.nickname)
+        instruments_base._globaldict[self.nickname] = instr
         self.loaded_signal.emit(instr)
+    
+    def run(self):
+        try:
+            self._run()
+        except Exception as e:
+            self.error_signal.emit(e)
 
 ####################
 # Default Driver
@@ -44,10 +51,10 @@ class Default:
 
     @staticmethod
     def load(lab, gui_instr):
-        # returns the thread that lab will start
+        # load the instrument, finish by calling lab.loadGuiDevices(gui_instr)
 
         nickname = gui_instr.nickname
-        ph_class = gui_instr.ph_class
+        ph_class = eval(gui_instr.ph_class)
         address = gui_instr.address
         kwargs = {}
         if gui_instr.slot is not None:
@@ -60,6 +67,7 @@ class Default:
 
         thread = LoadThread(nickname, ph_class, address, kwargs)
         thread.loaded_signal.connect(loaded)
+        thread.error_signal.connect(lambda e: lab.loadGuiInstrumentError(gui_instr, e))
         gui_instr._loading_thread = thread
         thread.start()
 
@@ -138,7 +146,7 @@ class ami430(Default):
     @staticmethod
     def load(lab, gui_instr):
         vec_nickname = gui_instr.nickname
-        vec_ph_class = gui_instr.ph_class
+        vec_ph_class = eval(gui_instr.ph_class)
         vec_instr_dict = gui_instr.instr_dict
 
         win = QMainWindow()
@@ -284,7 +292,9 @@ class VirtualGates(Default):
 
     @staticmethod
     def load(gui_instr, lab):
-        pass
+        win = QMainWindow()
+        uic.loadUi("ui/DriverVirtualGates.ui", win)
+        
 
     @staticmethod
     def sweep(gui_dev, lab):

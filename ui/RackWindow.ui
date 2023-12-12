@@ -116,7 +116,7 @@
      <x>0</x>
      <y>0</y>
      <width>813</width>
-     <height>21</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuImport">
@@ -129,8 +129,8 @@
     <property name="title">
      <string>Export</string>
     </property>
-    <addaction name="actionto_JSON"/>
-    <addaction name="actionto_PyHegel_script"/>
+    <addaction name="exportToJSON"/>
+    <addaction name="exportToPyHegel"/>
    </widget>
    <addaction name="menuImport"/>
    <addaction name="menuExport"/>
@@ -165,7 +165,7 @@
      <normaloff>../resources/list-add.svg</normaloff>../resources/list-add.svg</iconset>
    </property>
    <property name="text">
-    <string>Import instrument</string>
+    <string>Add instrument</string>
    </property>
    <property name="toolTip">
     <string>Add an instrument</string>
@@ -201,12 +201,12 @@
     <string>Load (reload) instrument</string>
    </property>
   </action>
-  <action name="actionto_JSON">
+  <action name="exportToJSON">
    <property name="text">
     <string>to JSON</string>
    </property>
   </action>
-  <action name="actionto_PyHegel_script">
+  <action name="exportToPyHegel">
    <property name="text">
     <string>to PyHegel script</string>
    </property>

@@ -35,11 +35,11 @@ class DisplayWidget(QMainWindow):
         # vertical plot
         self.vertical = self.graph.addPlot(row=0, col=1)
         self.vertical.hideButtons()
-        self.vertical.setMaximumWidth(150)
+        self.vertical.setMaximumWidth(200)
         # horizontal plot
         self.horizontal = self.graph.addPlot(row=1, col=0)
         self.horizontal.hideButtons()
-        self.horizontal.setMaximumHeight(150)
+        self.horizontal.setMaximumHeight(200)
         # plot links
         self.vertical.setYLink(self.main)
         self.horizontal.setXLink(self.main)

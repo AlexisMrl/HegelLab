@@ -10,9 +10,9 @@ from PyQt5.QtWidgets import (
     QTreeWidgetItem,
     QAbstractItemView,
     QLabel,
-    QListWidgetItem,
 )
 from PyQt5.QtGui import QFontDatabase
+import PyQt5.QtCore as QtCore
 from src.GuiInstrument import GuiInstrument, GuiDevice
 from pyHegel.gui.ScientificSpinBox import PyScientificSpinBox
 
@@ -27,17 +27,21 @@ class Rack(QMainWindow):
         self.fixed_font = QFontDatabase.systemFont(QFontDatabase.FixedFont)
         self.lab = lab
 
-        self.tree.setColumnWidth(0, 175)
+        # dimension:
+        self.resize(1000, 500)
+        self.tree.setColumnWidth(0, 250)
+        self.tree.setColumnWidth(2, 350)
         self.tree.setDragDropMode(QAbstractItemView.DragOnly)
+        self.tree.setIconSize(QtCore.QSize(16, 16))  # noqa: F821
         self.hbox_device.setEnabled(False)
 
         self.win_add = QMainWindow()
         self.win_set = QMainWindow()
-        self.win_create_dev = QMainWindow()
+        self.win_devconfig = QMainWindow()
         self.win_rename = QMainWindow()
 
         # -- Connect signals to slots --
-        self.actionAdd.triggered.connect(self.onLoadInstrument)
+        self.actionAdd.triggered.connect(self.onAddInstrument)
         self.actionRemove.triggered.connect(self.onRemoveInstrument)
         self.actionLoad.triggered.connect(self.onActionLoad)
         self.actionConfig.triggered.connect(self.onActionConfig)
@@ -46,6 +50,9 @@ class Rack(QMainWindow):
         self.pb_get.clicked.connect(self.onGetValue)
         self.pb_set.clicked.connect(self.onSetValue)
         self.pb_rename.clicked.connect(self.onRename)
+        self.pb_config.clicked.connect(self.onConfigDevice)
+        self.exportToPyHegel.triggered.connect(self.lab.exportToPyHegel)
+        self.exportToJSON.triggered.connect(self.lab.exportToJSON)
 
     def onSelectionChanged(self):
         selected_item = self.tree.selectedItem()
@@ -76,6 +83,7 @@ class Rack(QMainWindow):
             self.actionConfig.setEnabled(False)
             self.pb_get.setEnabled(True)
             self.pb_rename.setEnabled(True)
+            self.pb_config.setEnabled(True)
             gui_dev = data
             if gui_dev.type[0]:
                 self.pb_set.setEnabled(True)
@@ -135,6 +143,47 @@ class Rack(QMainWindow):
         bt_cancel.clicked.connect(cancelClicked)
         self.win_set.show()
     
+    def onConfigDevice(self):
+        selected_item = self.tree.selectedItem()
+        gui_dev = self.tree.getData(selected_item)
+        ramp, scale, limit = gui_dev.logical_kwargs['ramp'], gui_dev.logical_kwargs['scale'], gui_dev.logical_kwargs['limit']
+        # setting up window
+        uic.loadUi("ui/RackParamDevice.ui", self.win_devconfig)
+        win = self.win_devconfig
+        win.setWindowTitle("Configure device - " + gui_dev.getDisplayName("long"))
+        win.setWindowIcon(QtGui.QIcon("resources/instruments.svg"))
+        if ramp != {}:
+            win.cb_ramp.setChecked(True)
+        win.sb_ramp.setValue(ramp.get('rate', 0))
+        if scale != {}:
+            win.cb_scale.setChecked(True)
+            win.sb_scale.setValue(scale.get('factor', 0))
+        if limit != {}:
+            win.cb_limit.setChecked(True)
+        win.sb_min.setValue(limit.get('min', 0))
+        win.sb_max.setValue(limit.get('max', 0))
+        def onCreate():
+            if win.cb_ramp.isChecked():
+                gui_dev.logical_kwargs['ramp'] = {'rate': win.sb_ramp.value()}
+            else:
+                gui_dev.logical_kwargs['ramp'] = {}
+            if win.cb_scale.isChecked():
+                gui_dev.logical_kwargs['scale'] = {'factor': win.sb_scale.value()}
+            else:
+                gui_dev.logical_kwargs['scale'] = {}
+            if win.cb_limit.isChecked():
+                gui_dev.logical_kwargs['limit'] = {'min': win.sb_min.value(), 'max': win.sb_max.value()}
+            else:
+                gui_dev.logical_kwargs['limit'] = {}
+            self.lab.loadGuiLogicalDevice(gui_dev)
+            self.gui_updateGuiInstrument(gui_dev.parent)
+            win.close()
+        win.pb_create.clicked.connect(onCreate)
+        def onCancel():
+            win.close()
+        win.pb_cancel.clicked.connect(onCancel)
+        win.show()
+    
     def onActionLoad(self):
         selected_item = self.tree.selectedItem()
         self.lab.loadGuiInstrument(self.tree.getData(selected_item))
@@ -152,13 +201,13 @@ class Rack(QMainWindow):
     def closeEvent(self, event):
         self.win_add.close()
         self.win_set.close()
-        self.win_create_dev.close()
         self.win_rename.close()
+        self.win_devconfig.close()
         event.accept()
 
     # -- functions that creates windows --
-    # window load device
-    def onLoadInstrument(self):
+    # window add device
+    def onAddInstrument(self):
         # minimal window for loading device
         self.win_add.setWindowTitle("Add instrument")
         self.win_add.resize(350, 100)
@@ -218,7 +267,7 @@ class Rack(QMainWindow):
         )
 
         # ok and cancel buttons in a horizontal layout
-        bt_ok = QPushButton("Import")
+        bt_ok = QPushButton("Add")
         bt_cancel = QPushButton("Cancel")
         Hlayout = QHBoxLayout()
         Hlayout.addWidget(bt_ok)
@@ -310,9 +359,8 @@ class Rack(QMainWindow):
                     (None, None): "?",
                 }[gui_dev.type],
             )
-            dev_item.setText(
-                4, {True: "", False: "Not found"}[gui_dev.ph_dev is not None]
-            )
+            status_text = "Not found" if not gui_dev.isLoaded() and gui_dev.parent.isLoaded() else ""
+            dev_item.setText(4, status_text)
 
     def gui_addGuiInstrument(self, gui_instr):
         # add an instrument item to self.tree:
@@ -321,11 +369,8 @@ class Rack(QMainWindow):
         item.setFlags(item.flags() & ~Qt.ItemIsDragEnabled)
         item.setText(0, gui_instr.getDisplayName("long"))
         item.setText(2, gui_instr.address)
-        item.setText(3, gui_instr.ph_class.__name__)
+        item.setText(3, gui_instr.ph_class.split('.')[-1])
         item.setFont(3, self.fixed_font)
-        item.setText(
-            4, {True: "Loaded", False: "Not loaded"}[gui_instr.ph_instr is not None]
-        )
         self.tree.addTopLevelItem(item)
         self.gui_fillGuiInstrument(gui_instr)
 
@@ -343,9 +388,11 @@ class Rack(QMainWindow):
         # refill
         self.gui_fillGuiInstrument(gui_instr)
         # instr status:
-        item.setText(
-            4, {True: "Loaded", False: "Not loaded"}[gui_instr.ph_instr is not None]
-        )
+        loaded_text = "Loaded" if gui_instr.isLoaded() else "Loading error"
+        item.setText(4, loaded_text)
+        loaded_icon_path = "resources/icon-success.svg" if gui_instr.isLoaded() else "resources/icon-error.svg"
+        item.setIcon(4, QtGui.QIcon(loaded_icon_path))
+        self.onSelectionChanged()
 
     def gui_renameDevice(self, gui_dev):
         # rename the device item in self.tree
