@@ -21,7 +21,7 @@ class LoaderSaver:
         json_dict = {'instruments': list_of_dict}
         
         with open(path, 'w') as outfile:
-            json.dump(json_dict, outfile, indent=4)
+            json.dump(json_dict, outfile, indent=2)
 
     def exportToPyHegel(self, gui_instruments):
         # export rack to pyHegel loading code

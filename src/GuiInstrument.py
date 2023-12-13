@@ -2,12 +2,11 @@ class GuiInstrument:
     # class attached to every item that represent an instr
 
     def __init__(
-        self, nickname, instr_name, ph_class, driver, address, slot=None
+        self, nickname, ph_class, driver, address, slot=None
     ):
         self.nickname = nickname
-        self.instr_name = instr_name # name in the config json file
-        self.ph_class = ph_class
-        self.driver = driver # driver name, default = Drivers.Default
+        self.ph_class = ph_class # a string that can be eval() to get the class
+        self.driver = driver # driver name, default = "Drivers.Default" (str too)
         self.address = address
         self.slot = slot
 
@@ -42,18 +41,19 @@ class GuiInstrument:
     def toDict(self):
         # for json file saving
         d = {
-            'nickname': self.nickname,
-            'instr_name': self.instr_name,
             'ph_class': self.ph_class,
-            'driver': self.driver,
         }
+        if self.nickname != self.ph_class.split(".")[-1]:
+            d['nickname'] = self.nickname
+        if self.driver != 'Drivers.Default':
+            d['driver'] = self.driver
         if self.address is not None:
             d['address'] = self.address
         if self.slot is not None:
             d['slot'] = self.slot
-        d['gui_devices'] = []
+        d['devices'] = []
         for gui_dev in self.gui_devices:
-            d['gui_devices'].append(gui_dev.toDict())
+            d['devices'].append(gui_dev.toDict())
 
         return d
 
@@ -68,6 +68,7 @@ class GuiDevice:
         self.ph_name = ph_name
         self.extra_args = extra_args # dict of kwargs for tuple devices
         self.parent = parent
+        self.type = (None, None)  # (settable, gettable) = (T/F, T/F)
         
         self.logical_kwargs = {'scale': {}, 'ramp':{}, 'limit':{}}
         self.logical_dev = None
@@ -75,14 +76,18 @@ class GuiDevice:
         # not kept when saving
         self.ph_dev = None
         self.ph_choice = None  # ChoiceString from pyHegel
-        self.type = (None, None)  # (settable, gettable) = (T/F, T/F)
         self.sweep = [None, None, None]  # [start, stop, npts]
         self.cache_value = None  # a variable to cache the last value read
 
+        # sweep
         # a np.array for when the device is in a sweep (swept or output)
         # size is allocated at the beginning of the sweep
         self.values = None
         self.sw_idx = None  # SweepIdxIter object
+
+        # monitor
+        # a np.array for when the device is monitored
+        self.monitor_data = None
 
     def getPhDev(self, basedev=False):
         if self.logical_dev is not None and not basedev:
@@ -119,16 +124,16 @@ class GuiDevice:
     
     def toDict(self):
         # for json file saving
-        d = {
-            'nickname': self.nickname,
-            'ph_name': self.ph_name,
-        }
+        d = {}
+        if self.nickname != self.ph_name:
+            d['nickname'] = self.nickname
+        d['ph_name'] = self.ph_name
         if self.extra_args != {}:
             d['extra_args'] = self.extra_args
-        if self.logical_kwargs['scale'] != {}:
-            d['scale'] = self.logical_kwargs['scale']
         if self.logical_kwargs['ramp'] != {}:
             d['ramp'] = self.logical_kwargs['ramp']
+        if self.logical_kwargs['scale'] != {}:
+            d['scale'] = self.logical_kwargs['scale']
         if self.logical_kwargs['limit'] != {}:
             d['limit'] = self.logical_kwargs['limit']
         return d

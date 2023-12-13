@@ -62,8 +62,8 @@ class Default:
 
         def loaded(instr):
             gui_instr.ph_instr = instr
-            del gui_instr._loading_thread
             lab.loadGuiDevices(gui_instr)
+            del gui_instr._loading_thread
 
         thread = LoadThread(nickname, ph_class, address, kwargs)
         thread.loaded_signal.connect(loaded)

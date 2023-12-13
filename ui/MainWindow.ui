@@ -245,6 +245,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionInstruments"/>
+   <addaction name="actionMonitor"/>
    <addaction name="separator"/>
    <addaction name="actionStartSweep"/>
   </widget>
@@ -284,17 +285,26 @@
     <string>Start sweep</string>
    </property>
   </action>
+  <action name="actionMonitor">
+   <property name="icon">
+    <iconset>
+     <normaloff>../resources/monitor.svg</normaloff>../resources/monitor.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Monitor</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>PyScientificSpinBox</class>
-   <extends>QDoubleSpinBox</extends>
-   <header>pyHegel.gui.ScientificSpinBox</header>
-  </customwidget>
   <customwidget>
    <class>TreeWidget</class>
    <extends>QTreeWidget</extends>
    <header>widgets/TreeWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>PyScientificSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>pyHegel.gui.ScientificSpinBox</header>
   </customwidget>
  </customwidgets>
  <resources/>

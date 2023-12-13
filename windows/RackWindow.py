@@ -17,9 +17,9 @@ from src.GuiInstrument import GuiInstrument, GuiDevice
 from pyHegel.gui.ScientificSpinBox import PyScientificSpinBox
 
 
-class Rack(QMainWindow):
+class RackWindow(QMainWindow):
     def __init__(self, lab):
-        super(Rack, self).__init__()
+        super().__init__()
         uic.loadUi("ui/RackWindow.ui", self)
         self.setWindowTitle("Instrument rack")
         self.setWindowIcon(QtGui.QIcon("resources/instruments.svg"))
@@ -32,7 +32,7 @@ class Rack(QMainWindow):
         self.tree.setColumnWidth(0, 250)
         self.tree.setColumnWidth(2, 350)
         self.tree.setDragDropMode(QAbstractItemView.DragOnly)
-        self.tree.setIconSize(QtCore.QSize(16, 16))  # noqa: F821
+        self.tree.setIconSize(QtCore.QSize(13, 13))  # noqa: F821
         self.hbox_device.setEnabled(False)
 
         self.win_add = QMainWindow()

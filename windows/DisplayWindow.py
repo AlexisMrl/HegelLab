@@ -11,9 +11,9 @@ from PyQt5.QtCore import Qt
 import pyqtgraph as pg
 
 
-class Display(QMainWindow):
+class DisplayWindow(QMainWindow):
     def __init__(self, lab):
-        super(Display, self).__init__()
+        super().__init__()
         self.setWindowTitle("Live display")
         self.setWindowIcon(QIcon("resources/display1.svg"))
         self.resize(1000, 600)

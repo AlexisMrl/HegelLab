@@ -63,6 +63,9 @@ class Model:
             new_dev = limit_cls(new_dev, **limit_kw)
             new_dev._quiet_del = True
         
+        new_dev_name = f"wrap_{basedev.name}"
+        if hasattr(instrument, new_dev_name):
+            delattr(instrument, new_dev_name)
         setattr(instrument, f"wrap_{basedev.name}", new_dev)
         instrument._create_devs_helper()
 

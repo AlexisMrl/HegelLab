@@ -12,9 +12,9 @@ from PyQt5 import QtGui, uic
 from PyQt5.QtCore import Qt
 
 
-class Main(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self, lab):
-        super(Main, self).__init__()
+        super().__init__()
         # -- ui setup --
         uic.loadUi("ui/MainWindow.ui", self)
         self.setAttribute(Qt.WA_DeleteOnClose)
@@ -85,6 +85,7 @@ class Main(QMainWindow):
         # -- Connect signals to slots --
         self.actionInstruments.triggered.connect(self.lab.showRack)
         self.actionDisplay.triggered.connect(self.lab.showDisplay)
+        self.actionMonitor.triggered.connect(self.lab.showMonitor)
         # trees:
         self.tree_sw.itemSelectionChanged.connect(self.onSweepSelectionChanged)
         self.tree_out.itemSelectionChanged.connect(self.onOutSelectionChanged)

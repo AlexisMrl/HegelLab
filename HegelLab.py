@@ -3,7 +3,7 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
-from views import Main, Rack, Display, Console
+from windows import MainWindow, RackWindow, DisplayWindow, MonitorWindow
 from src import LoaderSaver, Model, Popup, SweepThread, Drivers
 from src.GuiInstrument import GuiInstrument, GuiDevice
 from src.SweepIdxIter import IdxIter
@@ -26,15 +26,16 @@ class HegelLab:
         self.pop = Popup.Popup()
         # model, views
         self.model = Model.Model()
-        self.view_main = Main.Main(self)
-        self.view_rack = Rack.Rack(self)
-        self.view_display = Display.Display(self)
+        self.view_main = MainWindow.MainWindow(self)
+        self.view_rack = RackWindow.RackWindow(self)
+        self.view_display = DisplayWindow.DisplayWindow(self)
+        self.view_monitor = MonitorWindow.MonitorWindow(self)
 
         self._wins = [] # bypass the ramasse miette
         self._instr_loading_thread = None # same
 
         # data
-        self.instr_list = self.loader.importFromJSON('instruments.json')
+        self.instr_list = self.loader.importFromJSON('default_instruments.json')
         self.gui_instruments = []  # list of GuiInstrument in rack
 
         # sweep related
@@ -59,12 +60,17 @@ class HegelLab:
     def showDisplay(self, dual=None):
         self.view_display.show_(dual)
         self.view_display.raise_()
+    
+    def showMonitor(self):
+        self.view_monitor.show()
+        self.view_monitor.raise_()
 
     def askClose(self, event):
         if self.pop.askQuit():
             self.view_main.close()
             self.view_rack.close()
             self.view_display.close()
+            self.view_monitor.close()
             if self.app is not None:
                 self.app.closeAllWindows()
         else:
@@ -102,13 +108,12 @@ class HegelLab:
         # build GuiInstrument and populate dvices, but no ph_instr nor ph_dev
         # loading is done in loadGuiInstrument.
         nickname = self._checkInstrNickname(nickname)
-        instr_name = instr_dict.get('name')
         #ph_class = eval(instr_dict.get('ph_class'))
         ph_class = instr_dict.get('ph_class')
         #driver = eval(instr_dict.get('driver', 'Drivers.Default'))
         driver = instr_dict.get('driver', 'Drivers.Default')
         # instanciate GuiInstrument
-        gui_instr = GuiInstrument(nickname, instr_name, ph_class, driver, addr, slot)
+        gui_instr = GuiInstrument(nickname, ph_class, driver, addr, slot)
         gui_instr.instr_dict = instr_dict
         return gui_instr
     
@@ -143,8 +148,7 @@ class HegelLab:
         self._instanciateGuiDevices(gui_instr, instr_dict)
         self.gui_instruments.append(gui_instr)
         # loading (not sure, featurewise)
-        #self.loadGuiInstrument(gui_instr)
-        #self.loadGuiDevices(gui_instr)
+        self.loadGuiInstrument(gui_instr)
 
         # "signals"
         self.view_rack.gui_addGuiInstrument(gui_instr)
@@ -157,11 +161,13 @@ class HegelLab:
         eval(gui_instr.driver).load(self, gui_instr)
     
     def loadGuiInstrumentError(self, gui_instr, exception):
+        # called by drivers when loading a GuiInstrument
         tb_str = "".join(traceback.format_tb(exception.__traceback__))
         self.pop.instrLoadError(exception, tb_str)
         self.view_rack.gui_updateGuiInstrument(gui_instr)
 
     def loadGuiDevices(self, gui_instr):
+        # called by drivers when loading a GuiInstrument
         for gui_dev in gui_instr.gui_devices:
             try:
                 gui_dev.ph_dev = self.model.getDevice(
@@ -205,10 +211,13 @@ class HegelLab:
 
     def getValue(self, gui_dev):
         # get the value of the GuiDevice and update the gui
-        if gui_dev.ph_dev is None: return
+        dev = gui_dev.getPhDev()
+        if dev is None: return
         value = self.model.getValue(gui_dev.getPhDev())
         gui_dev.cache_value = value
         self.view_rack.gui_updateDeviceValue(gui_dev, value)
+        self.view_monitor.gui_updateDeviceValue(gui_dev, value)
+        return value
 
     def setValue(self, gui_dev, val):
         # set the value of the GuiDevice and update the gui
@@ -225,6 +234,7 @@ class HegelLab:
         gui_dev.nickname = new_nickname
         self.view_main.gui_renameDevice(gui_dev)
         self.view_rack.gui_renameDevice(gui_dev)
+        self.view_monitor.gui_renameDevice(gui_dev)
 
     # -- SWEEP TREES --
 
@@ -286,7 +296,8 @@ class HegelLab:
         self.loader.exportToJSON(self.gui_instruments, 'temp/rack.json')
     
     def importFromJSON(self):
-        self.loader.importFromJSON('temp/rack.json')
+        instruments_to_add = self.loader.importFromJSON('temp/rack.json')
+        self.to_add = instruments_to_add
     
     def exportToPyHegel(self):
         self.loader.exportPyHegel(self.gui_instruments)
