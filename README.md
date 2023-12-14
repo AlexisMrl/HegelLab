@@ -35,6 +35,13 @@ conda install -c conda-forge pyvisa
 cd <PyHegel dir>
 pip install -e .
 ```
-Then clone this repo and run `HegelLab.py` in pyHegel.
 
+Then clone this repo and run HegelLab from `pyHegel`:
+```py
+git clone https://github.com/AlexisMrl/HegelLab.git
+cd HegelLab
+pyHegel
+run HegelLab
+```
 
+Or (not fully supported yet) edit the .lnk file with your `pythonw` env path

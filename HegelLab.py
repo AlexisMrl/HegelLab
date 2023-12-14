@@ -467,8 +467,20 @@ if __name__ == "__main__":
     with_app = False
     if len(sys.argv) > 1 and sys.argv[1] == "--with-app":
         with_app = True
+        QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
+        QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
         app = QApplication([])
         app.setApplicationDisplayName("HegelLab")
+
+        class Logger():
+            def __init__(self, filename):
+                self.log = open(filename, "a")
+            def write(self, message):
+                self.log.write(message)
+            def flush(self):
+                pass
+        sys.stdout = Logger("logs/stdout.txt")
+        sys.stderr = Logger("logs/stderr.txt")
     
     pixmap = QPixmap("./resources/favicon/favicon.png")
     pixmap = pixmap.scaled(256, 256)

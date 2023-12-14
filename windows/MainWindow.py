@@ -21,6 +21,7 @@ class MainWindow(AltDragWindow):
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle("HegelLab")
         self.setWindowIcon(QtGui.QIcon("resources/favicon/favicon.png"))
+        self.resize(1100, 600)
         self.toolBar.setToolButtonStyle(2)  # text beside icon
         self.toolBar.setContextMenuPolicy(Qt.PreventContextMenu)
         # add a line edit in the toolbar for filename (not possible from designer):
