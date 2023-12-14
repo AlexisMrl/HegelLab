@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from pyHegel.gui import ScientificSpinBox
 
 from src.GuiInstrument import GuiDevice
+from widgets.WindowWidget import AltDragWindow
 
 from pyqtgraph.dockarea import DockArea, Dock
 from pyqtgraph.widgets import PlotWidget
@@ -32,30 +33,34 @@ class MonitorThread(QThread):
             self.msleep(self.interval)
             if self.pause: continue
 
-            val = self.get_fn(self.gui_dev.getPhDev())
+            # because logical_dev is innacessible when ramping
+            # we get the value from the basedev
+            # and divide by scale if needed
+            val = self.get_fn(self.gui_dev.getPhDev(basedev=True))
             if val is None: continue
-            if isinstance(val, (list, tuple)):
-                val = val[0]
+
+            factor = self.gui_dev.logical_kwargs['scale'].get('factor', 1)
+            val = val / factor
             self.gui_dev.monitor_data = np.roll(self.gui_dev.monitor_data, -1)
             self.gui_dev.monitor_data[-1] = val
             self.update_signal.emit(self.gui_dev)
     
 
 class MonitorObj:
-    def __init__(self, gui_dev, get_fn, interval, lab):
+    def __init__(self, lab, gui_dev, interval):
         self.lab = lab
         self.gui_dev = gui_dev
-        # todo: bigger spinbox font
         self.spinbox = ScientificSpinBox.PyScientificSpinBox(buttonSymbols=2, readOnly=True)
         font = self.spinbox.font()
-        font.setPointSize(15); self.spinbox.setFont(font)
+        font.setPointSize(14); self.spinbox.setFont(font)
         
-        gui_dev.monitor_data = np.full(200, 0.)
+        gui_dev.monitor_data = np.full(200, np.nan, dtype=np.float64)
         self.plot = PlotWidget.PlotWidget()
         self.curve = self.plot.plot()
         self.dock = Dock(name=gui_dev.getDisplayName("short"))
         self.dock.addWidget(self.plot)
 
+        get_fn = self.lab.model.getValue
         self.thread = MonitorThread(gui_dev, get_fn, interval)
         self.thread.update_signal.connect(self.update)
         self.thread.start()
@@ -65,7 +70,7 @@ class MonitorObj:
         self.spinbox.setValue(gui_dev.monitor_data[-1])
         self.lab.view_rack.gui_updateDeviceValue(gui_dev, gui_dev.monitor_data[-1])
 
-class MonitorWindow(QMainWindow):
+class MonitorWindow(AltDragWindow):
     def __init__(self, lab):
         super().__init__()
         self.lab = lab
@@ -85,8 +90,8 @@ class MonitorWindow(QMainWindow):
             monitor_obj = self.tree.getData(selected, 1)
             monitor_obj.thread.terminate()
             monitor_obj.dock.close()
+            self.monitors_dict.pop(monitor_obj.gui_dev)
             self.tree.removeSelected()
-            del monitor_obj
         self.btn_remove.clicked.connect(tree_onRemove)
         def onDrop(data):
             instr_nickname = str(data.data("instrument-nickname"), "utf-8")
@@ -113,7 +118,7 @@ class MonitorWindow(QMainWindow):
         if gui_dev in self.monitors_dict.keys():
             return
         gui_dev_name = gui_dev.getDisplayName("short")
-        monitor_obj = MonitorObj(gui_dev, self.lab.model.getValue, 100, self.lab)
+        monitor_obj = MonitorObj(self.lab, gui_dev, 200)
         self.dock_area.addDock(monitor_obj.dock)
 
         self.monitors_dict[gui_dev] = monitor_obj

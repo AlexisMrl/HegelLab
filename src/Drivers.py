@@ -16,7 +16,9 @@ from PyQt5.QtWidgets import (
 ####################
 # Loading thread
 ####################
+
 class LoadThread(QThread):
+    # thread for loading an instrument
     loaded_signal = pyqtSignal(object)
     error_signal = pyqtSignal(object)
 

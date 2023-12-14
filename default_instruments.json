@@ -92,8 +92,7 @@
 
         {
             "name": "Virtual gate instrument",
-            "ph_class": "instruments.virtual_gates_instr",
-            "driver": "Drivers.VirtualGates"
+            "ph_class": "instruments.virtual_gates_instr"
         }
     ]
 }

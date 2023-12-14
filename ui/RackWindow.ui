@@ -123,7 +123,7 @@
     <property name="title">
      <string>Import</string>
     </property>
-    <addaction name="actionfrom_JSON"/>
+    <addaction name="importFromJSON"/>
    </widget>
    <widget class="QMenu" name="menuExport">
     <property name="title">
@@ -211,7 +211,7 @@
     <string>to PyHegel script</string>
    </property>
   </action>
-  <action name="actionfrom_JSON">
+  <action name="importFromJSON">
    <property name="text">
     <string>from JSON</string>
    </property>

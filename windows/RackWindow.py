@@ -15,9 +15,10 @@ from PyQt5.QtGui import QFontDatabase
 import PyQt5.QtCore as QtCore
 from src.GuiInstrument import GuiInstrument, GuiDevice
 from pyHegel.gui.ScientificSpinBox import PyScientificSpinBox
+from widgets.WindowWidget import AltDragWindow
 
 
-class RackWindow(QMainWindow):
+class RackWindow(AltDragWindow):
     def __init__(self, lab):
         super().__init__()
         uic.loadUi("ui/RackWindow.ui", self)
@@ -51,6 +52,7 @@ class RackWindow(QMainWindow):
         self.pb_set.clicked.connect(self.onSetValue)
         self.pb_rename.clicked.connect(self.onRename)
         self.pb_config.clicked.connect(self.onConfigDevice)
+        self.importFromJSON.triggered.connect(self.lab.importFromJSON)
         self.exportToPyHegel.triggered.connect(self.lab.exportToPyHegel)
         self.exportToJSON.triggered.connect(self.lab.exportToJSON)
 

@@ -31,8 +31,6 @@ class HegelLab:
         self.view_display = DisplayWindow.DisplayWindow(self)
         self.view_monitor = MonitorWindow.MonitorWindow(self)
 
-        self._wins = [] # bypass the ramasse miette
-        self._instr_loading_thread = None # same
 
         # data
         self.instr_list = self.loader.importFromJSON('default_instruments.json')
@@ -71,6 +69,8 @@ class HegelLab:
             self.view_rack.close()
             self.view_display.close()
             self.view_monitor.close()
+            self.model.close()
+            self.loader.close()
             if self.app is not None:
                 self.app.closeAllWindows()
         else:
@@ -213,7 +213,12 @@ class HegelLab:
         # get the value of the GuiDevice and update the gui
         dev = gui_dev.getPhDev()
         if dev is None: return
-        value = self.model.getValue(gui_dev.getPhDev())
+        value = self.model.getValue(gui_dev.getPhDev(basedev=True))
+
+        # because logical_dev is innacessible when ramping:
+        factor = gui_dev.logical_kwargs['scale'].get('factor', 1)
+        value = value / factor
+
         gui_dev.cache_value = value
         self.view_rack.gui_updateDeviceValue(gui_dev, value)
         self.view_monitor.gui_updateDeviceValue(gui_dev, value)
@@ -222,8 +227,8 @@ class HegelLab:
     def setValue(self, gui_dev, val):
         # set the value of the GuiDevice and update the gui
         try:
-            # TODO: do this in a thread to avoid freezing
             self.model.setValue(gui_dev.getPhDev(), val)
+            QApplication.processEvents()
         except Exception as e:
             tb_str = "".join(traceback.format_tb(e.__traceback__))
             self.pop.setValueError(e, tb_str)
@@ -294,14 +299,20 @@ class HegelLab:
         driver_cls.config(self, gui_instr)
     
     def exportToJSON(self):
-        self.loader.exportToJSON(self.gui_instruments, 'temp/rack.json')
+        self.loader.exportToJSON(self.gui_instruments)
     
     def importFromJSON(self):
-        instruments_to_add = self.loader.importFromJSON('temp/rack.json')
+        instruments_to_add = self.loader.importFromJSON()
         self.to_add = instruments_to_add
+        # add the instruments
+        for instr_ord_dict in instruments_to_add:
+            nickname = instr_ord_dict.get('nickname', instr_ord_dict['ph_class'].split('.')[-1])
+            addr = instr_ord_dict.get('address', None)
+            slot = instr_ord_dict.get('slot', None)
+            self.newInstrumentFromRack(nickname, addr, slot, instr_ord_dict)
     
     def exportToPyHegel(self):
-        self.loader.exportPyHegel(self.gui_instruments)
+        self.loader.exportToPyHegel(self.gui_instruments)
 
     # -- SWEEP THREAD --
 
@@ -453,7 +464,9 @@ if __name__ == "__main__":
     from PyQt5.QtGui import QPixmap
     from PyQt5 import QtCore
 
-    if len(sys.argv) > 0 and sys.argv[1] == "--with-app":
+    with_app = False
+    if len(sys.argv) > 1 and sys.argv[1] == "--with-app":
+        with_app = True
         app = QApplication([])
         app.setApplicationDisplayName("HegelLab")
     
@@ -473,4 +486,5 @@ if __name__ == "__main__":
 
     hl.showMain()
     
-    sys.exit(app.exec())
+    if with_app:
+        sys.exit(app.exec())

@@ -57,6 +57,15 @@ class GuiInstrument:
 
         return d
 
+    def toPyHegelScript(self):
+        s = self.nickname + " = "
+        s += self.ph_class + "("
+        s += '"' + self.address + '"'
+        s += f", slot={self.slot}" if self.slot is not None else ""
+        s += ")"
+        for gui_dev in self.gui_devices:
+            s += gui_dev.toPyHegelScript()
+        return s
     
 
 
@@ -137,3 +146,45 @@ class GuiDevice:
         if self.logical_kwargs['limit'] != {}:
             d['limit'] = self.logical_kwargs['limit']
         return d
+
+    def toPyHegelScript(self):
+        # write a device only if:
+        #  - it has a nickname != ph_name
+        #  - it has extra_args
+        #  - it has a ramp/scale/limit
+        #  or a combination
+
+        s = ""
+
+        if self.nickname == self.ph_name and \
+           self.extra_args == {} and \
+           self.logical_kwargs == {'scale': {}, 'ramp':{}, 'limit':{}}:
+            return s
+
+        s += "\n"
+        s += self.nickname + " = "
+
+        if self.extra_args == {} :
+            s += self.parent.nickname + "." + self.ph_name
+        else:
+            s += f"({self.parent.nickname}.{self.ph_name}, {self.extra_args})"
+
+        scale_kw = self.logical_kwargs['scale']
+        if scale_kw != {}:
+            scale_kw["scale_factor"] = scale_kw.pop("factor")
+            scale_kw["only_val"] = True
+            scale_kw["invert_trans"] = True
+            scale_str = ", ".join([f"{k}={v}" for k, v in scale_kw.items()])
+            s += f"\n{self.nickname} = instruments.ScalingDevice({self.nickname}, {scale_str})"
+
+        ramp_kw = self.logical_kwargs['ramp']
+        if ramp_kw != {}:
+            ramp_str = ", ".join([f"{k}={v}" for k, v in ramp_kw.items()])
+            s += f"\n{self.nickname} = instruments.RampDevice({self.nickname}, {ramp_str})"
+
+        limit_kw = self.logical_kwargs['limit']
+        if limit_kw != {}:
+            limit_str = ", ".join([f"{k}={v}" for k, v in limit_kw.items()])
+            s += f"\n{self.nickname} = instruments.LimitDevice({self.nickname}, {limit_str})"
+            
+        return s

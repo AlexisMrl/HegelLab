@@ -10,9 +10,10 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5 import QtGui, uic
 from PyQt5.QtCore import Qt
+from widgets.WindowWidget import AltDragWindow
 
 
-class MainWindow(QMainWindow):
+class MainWindow(AltDragWindow):
     def __init__(self, lab):
         super().__init__()
         # -- ui setup --

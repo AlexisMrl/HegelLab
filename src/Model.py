@@ -1,10 +1,28 @@
 from pyHegel import commands as c
 from pyHegel import instruments
 
+from PyQt5.QtCore import QThread, pyqtSignal
+class setThread(QThread):
+    # thread for set commands
+    finished_signal = pyqtSignal()
+    def __init__(self, dev, value):
+        super().__init__()
+        self.dev = dev
+        self.value = value
+    
+    def run(self):
+        c.set(self.dev, self.value)
+        self.finished_signal.emit()
 
 class Model:
     # The model is the only one doing the pyHegel commands
     # except for the loading drivers
+    
+    setThreads = []
+    
+    def close(self):
+        for thread in self.setThreads:
+            thread.terminate()
 
     def getDevice(self, instr, name):
         dev = getattr(instr, name)
@@ -20,7 +38,13 @@ class Model:
         return c.get(dev)
 
     def setValue(self, dev, value):
-        c.set(dev, value)
+        #c.set(dev, value)
+        thread = setThread(dev, value)
+        self.setThreads.append(thread)
+        def onFinished():
+            self.setThreads.remove(thread)
+        thread.finished_signal.connect(onFinished)
+        thread.start()
 
     def startSweep(self, **kwargs):
         return c.sweep_multi(**kwargs)
