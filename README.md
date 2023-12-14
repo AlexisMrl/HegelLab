@@ -45,3 +45,8 @@ run HegelLab
 ```
 
 Or (not fully supported yet) edit the .lnk file with your `pythonw` env path
+
+For zi instruments:
+```py
+pip install zhinst 
+```

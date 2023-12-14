@@ -255,6 +255,7 @@ class RackWindow(AltDragWindow):
                 le_address.setEnabled(False)
                 le_address.clear()
             slots = settings.get('slots', None)
+            cb_slot.clear()
             if slots:
                 lbl_slot.setEnabled(True)
                 cb_slot.setEnabled(True)
@@ -262,7 +263,6 @@ class RackWindow(AltDragWindow):
             else:
                 lbl_slot.setEnabled(False)
                 cb_slot.setEnabled(False)
-                cb_slot.clear()
 
         cb_instr.currentTextChanged.connect(
             lambda: cbInstrChanged(cb_instr.currentData())

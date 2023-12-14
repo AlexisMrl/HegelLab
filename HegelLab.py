@@ -122,9 +122,35 @@ class HegelLab:
         for dev_dict in devices:
             ph_name = dev_dict.get('ph_name')
             nickname = dev_dict.get('nickname', ph_name)
-            nickname = self._checkDevNickname(nickname, gui_instr)
-            extra_args = dict(dev_dict.get('extra_args', {}))
+            nickname_multi = dev_dict.get('nickname_multi', [])
+            extra_args = dict(dev_dict.get('extra_args', {}))  #   <-, this one
+            extra_args_multi = dict(dev_dict.get('extra_args_multi', {}))
+
+            if extra_args_multi:
+                # extra_args_multi = {'arg_name1': [arg_dev1, arg_dev2, ...], ... }
+                # assume all lists have the same length
+                nb_of_dev = len(list(extra_args_multi.values())[0])
+                def gen_extra_args(i):
+                    extra_args_keys = list(extra_args_multi.keys())
+                    for key in extra_args_keys: 
+                        # addd keys to the original extra_args dict -^
+                        extra_args[key] = extra_args_multi[key][i]
+                    return extra_args
+                # recursive:
+                for i in range(nb_of_dev):
+                    if len(nickname_multi) == nb_of_dev:
+                        new_nickname = nickname_multi[i]
+                    else:
+                        new_nickname = nickname.replace("%i", str(i))
+                    dev_instr_dict = dict(dev_dict)
+                    dev_instr_dict.pop('extra_args_multi')
+                    dev_instr_dict['nickname'] = new_nickname
+                    dev_instr_dict['extra_args'] = gen_extra_args(i)
+                    self._instanciateGuiDevices(gui_instr, dict(devices=[dev_instr_dict]))
+                continue
+
             # instanciate GuiDevice
+            nickname = self._checkDevNickname(nickname, gui_instr)
             gui_dev = GuiDevice(nickname, ph_name, extra_args, parent=gui_instr)
             # type
             setget = dict(dev_dict.get('type', dict(set=None, get=None)))
@@ -204,20 +230,28 @@ class HegelLab:
         # remove its devices in the trees:
         for dev in gui_instr.gui_devices:
             self.view_main.gui_removeDevice(dev)
-        self.view_rack.gui_removeGuiInstrument(gui_instr)
-        for dev in gui_instr.gui_devices:
-            self.view_main.gui_removeDevice(dev)
+            self.view_monitor.gui_removeDevice(dev)
         self.gui_instruments.remove(gui_instr)
+        self.view_rack.gui_removeGuiInstrument(gui_instr)
+        if gui_instr.ph_instr is not None:
+            del gui_instr.ph_instr
+        del gui_instr
 
     def getValue(self, gui_dev):
         # get the value of the GuiDevice and update the gui
-        dev = gui_dev.getPhDev()
-        if dev is None: return
-        value = self.model.getValue(gui_dev.getPhDev(basedev=True))
+        try:
+            dev = gui_dev.getPhDev()
+            if dev is None: return
+            value = self.model.getValue(gui_dev.getPhDev(basedev=True))
+        except Exception as e:
+            tb_str = "".join(traceback.format_tb(e.__traceback__))
+            self.pop.getValueError(e, tb_str)
+            return
 
         # because logical_dev is innacessible when ramping:
         factor = gui_dev.logical_kwargs['scale'].get('factor', 1)
-        value = value / factor
+        if isinstance(value, (int, float)):
+            value = value / factor
 
         gui_dev.cache_value = value
         self.view_rack.gui_updateDeviceValue(gui_dev, value)

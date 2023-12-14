@@ -47,9 +47,10 @@ class MonitorThread(QThread):
     
 
 class MonitorObj:
-    def __init__(self, lab, gui_dev, interval):
+    def __init__(self, lab, gui_dev, interval, dev_item):
         self.lab = lab
         self.gui_dev = gui_dev
+        self.dev_item = dev_item # item in tree
         self.spinbox = ScientificSpinBox.PyScientificSpinBox(buttonSymbols=2, readOnly=True)
         font = self.spinbox.font()
         font.setPointSize(14); self.spinbox.setFont(font)
@@ -84,15 +85,7 @@ class MonitorWindow(AltDragWindow):
         self.splitter.addWidget(self.dock_area)
         self.splitter.setSizes([300, 500])
         # tree:
-        def tree_onRemove():
-            selected = self.tree.selectedItem()
-            if not selected: return
-            monitor_obj = self.tree.getData(selected, 1)
-            monitor_obj.thread.terminate()
-            monitor_obj.dock.close()
-            self.monitors_dict.pop(monitor_obj.gui_dev)
-            self.tree.removeSelected()
-        self.btn_remove.clicked.connect(tree_onRemove)
+        self.btn_remove.clicked.connect(self.gui_removeDevice)
         def onDrop(data):
             instr_nickname = str(data.data("instrument-nickname"), "utf-8")
             dev_nickname = str(data.data("device-nickname"), "utf-8")
@@ -117,15 +110,14 @@ class MonitorWindow(AltDragWindow):
         # create and add MonitorDock
         if gui_dev in self.monitors_dict.keys():
             return
-        gui_dev_name = gui_dev.getDisplayName("short")
-        monitor_obj = MonitorObj(self.lab, gui_dev, 200)
+        dev_item = QTreeWidgetItem()
+        monitor_obj = MonitorObj(self.lab, gui_dev, 200, dev_item)
         self.dock_area.addDock(monitor_obj.dock)
 
         self.monitors_dict[gui_dev] = monitor_obj
         
         # create and add tree item
-        dev_item = QTreeWidgetItem()
-        dev_item.setText(0, gui_dev_name)
+        dev_item.setText(0, gui_dev.getDisplayName("short"))
         self.tree.setData(dev_item, gui_dev, 0)
         self.tree.setData(dev_item, monitor_obj, 1)
         self.tree.addTopLevelItem(dev_item)
@@ -151,3 +143,11 @@ class MonitorWindow(AltDragWindow):
         monitor_obj.dock.setTitle(new_nickname)
         dev_item = self.tree.findItemByData(monitor_obj)
         dev_item.setText(0, gui_dev.getDisplayName("short"))
+
+    def gui_removeDevice(self, gui_dev):
+        monitor_obj = self.monitors_dict.get(gui_dev, None)
+        if monitor_obj is None: return
+        monitor_obj.thread.terminate()
+        monitor_obj.dock.close()
+        self.tree.removeByData(gui_dev)
+        self.monitors_dict.pop(monitor_obj.gui_dev)
