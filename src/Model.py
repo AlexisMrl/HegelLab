@@ -54,14 +54,18 @@ class Model:
             new_dev._quiet_del = True
         
         if scale_kw:
-            scale_kw["invert_trans"] = True
             scale_kw["scale_factor"] = scale_kw.pop("factor")
+            scale_kw["only_val"] = True
             new_dev = scale_cls(new_dev, **scale_kw)
+            new_dev._invert_trans = True
             new_dev._quiet_del = True
 
         if limit_kw:
             new_dev = limit_cls(new_dev, **limit_kw)
             new_dev._quiet_del = True
+            
+        if new_dev == basedev:
+            return None
         
         new_dev_name = f"wrap_{basedev.name}"
         if hasattr(instrument, new_dev_name):

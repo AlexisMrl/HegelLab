@@ -23,17 +23,16 @@ class MonitorThread(QThread):
     def __init__(self, gui_dev, get_fn, interval):
         super().__init__()
         self.gui_dev = gui_dev
-        self.ph_dev = gui_dev.getPhDev()
         self.get_fn = get_fn
         self.interval = interval
         self.pause = False
     
     def run(self):
         while True:
-            self.sleep(self.interval)
+            self.msleep(self.interval)
             if self.pause: continue
 
-            val = self.get_fn(self.gui_dev)
+            val = self.get_fn(self.gui_dev.getPhDev())
             if val is None: continue
             if isinstance(val, (list, tuple)):
                 val = val[0]
@@ -43,12 +42,15 @@ class MonitorThread(QThread):
     
 
 class MonitorObj:
-    def __init__(self, gui_dev, get_fn, interval):
+    def __init__(self, gui_dev, get_fn, interval, lab):
+        self.lab = lab
         self.gui_dev = gui_dev
         # todo: bigger spinbox font
         self.spinbox = ScientificSpinBox.PyScientificSpinBox(buttonSymbols=2, readOnly=True)
+        font = self.spinbox.font()
+        font.setPointSize(15); self.spinbox.setFont(font)
         
-        gui_dev.monitor_data = np.full(100, 0)
+        gui_dev.monitor_data = np.full(200, 0.)
         self.plot = PlotWidget.PlotWidget()
         self.curve = self.plot.plot()
         self.dock = Dock(name=gui_dev.getDisplayName("short"))
@@ -60,7 +62,8 @@ class MonitorObj:
     
     def update(self, gui_dev):
         self.curve.setData(gui_dev.monitor_data)
-
+        self.spinbox.setValue(gui_dev.monitor_data[-1])
+        self.lab.view_rack.gui_updateDeviceValue(gui_dev, gui_dev.monitor_data[-1])
 
 class MonitorWindow(QMainWindow):
     def __init__(self, lab):
@@ -79,7 +82,7 @@ class MonitorWindow(QMainWindow):
         def tree_onRemove():
             selected = self.tree.selectedItem()
             if not selected: return
-            monitor_obj = self.tree.getData(selected)
+            monitor_obj = self.tree.getData(selected, 1)
             monitor_obj.thread.terminate()
             monitor_obj.dock.close()
             self.tree.removeSelected()
@@ -110,7 +113,7 @@ class MonitorWindow(QMainWindow):
         if gui_dev in self.monitors_dict.keys():
             return
         gui_dev_name = gui_dev.getDisplayName("short")
-        monitor_obj = MonitorObj(gui_dev, self.lab.getValue, 1)
+        monitor_obj = MonitorObj(gui_dev, self.lab.model.getValue, 100, self.lab)
         self.dock_area.addDock(monitor_obj.dock)
 
         self.monitors_dict[gui_dev] = monitor_obj
@@ -118,7 +121,8 @@ class MonitorWindow(QMainWindow):
         # create and add tree item
         dev_item = QTreeWidgetItem()
         dev_item.setText(0, gui_dev_name)
-        dev_item.setData(0, Qt.UserRole, monitor_obj)
+        self.tree.setData(dev_item, gui_dev, 0)
+        self.tree.setData(dev_item, monitor_obj, 1)
         self.tree.addTopLevelItem(dev_item)
         self.tree.setItemWidget(dev_item, 1, monitor_obj.spinbox)
         

@@ -27,13 +27,13 @@ class TreeWidget(QTreeWidget):
         return selected[0]
 
     @staticmethod
-    def getData(item):
+    def getData(item, column=0):
         # return the data of an item
-        return item.data(0, QtCore.Qt.UserRole)
+        return item.data(column, QtCore.Qt.UserRole)
 
-    def setData(self, item, data):
+    def setData(self, item, data, column=0):
         # set the data of an item
-        item.setData(0, QtCore.Qt.UserRole, data)
+        item.setData(column, QtCore.Qt.UserRole, data)
 
     def findItemByData(self, data):
         # find an item by its data, including subitems

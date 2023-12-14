@@ -42,6 +42,12 @@
     </item>
     <item row="2" column="0">
      <widget class="QCheckBox" name="cb_scale">
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;On writing, it writes  basedev.get()*scale_factor&lt;/p&gt;&lt;p&gt;On reading it returns basedev.set(val/scale_factor)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="toolTipDuration">
+       <number>20000</number>
+      </property>
       <property name="text">
        <string>Scale</string>
       </property>

@@ -222,6 +222,7 @@ class HegelLab:
     def setValue(self, gui_dev, val):
         # set the value of the GuiDevice and update the gui
         try:
+            # TODO: do this in a thread to avoid freezing
             self.model.setValue(gui_dev.getPhDev(), val)
         except Exception as e:
             tb_str = "".join(traceback.format_tb(e.__traceback__))
@@ -452,6 +453,9 @@ if __name__ == "__main__":
     from PyQt5.QtGui import QPixmap
     from PyQt5 import QtCore
 
+    if len(sys.argv) > 0 and sys.argv[1] == "--with-app":
+        app = QApplication([])
+        app.setApplicationDisplayName("HegelLab")
     
     pixmap = QPixmap("./resources/favicon/favicon.png")
     pixmap = pixmap.scaled(256, 256)
@@ -468,3 +472,5 @@ if __name__ == "__main__":
     splash.finish(hl.view_main)
 
     hl.showMain()
+    
+    sys.exit(app.exec())
