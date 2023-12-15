@@ -36,8 +36,12 @@ class MonitorThread(QThread):
             # because logical_dev is innacessible when ramping
             # we get the value from the basedev
             # and divide by scale if needed
-            val = self.get_fn(self.gui_dev.getPhDev(basedev=True))
+            dev = self.gui_dev.getPhDev(basedev=True)
+            if dev is None: continue
+            val = self.get_fn(dev)
             if val is None: continue
+            if isinstance(val, (list, tuple)):
+                val = val[0]
 
             factor = self.gui_dev.logical_kwargs['scale'].get('factor', 1)
             val = val / factor
@@ -85,7 +89,13 @@ class MonitorWindow(AltDragWindow):
         self.splitter.addWidget(self.dock_area)
         self.splitter.setSizes([300, 500])
         # tree:
-        self.btn_remove.clicked.connect(self.gui_removeDevice)
+        def selectedGuiDev():
+            item = self.tree.selectedItem()
+            if not item: return
+            gui_dev = self.tree.getData(item, 0)
+            return gui_dev
+        # TODO: fix remove button
+        self.btn_remove.clicked.connect(lambda gui_dev=selectedGuiDev(): self.gui_removeDevice(gui_dev=gui_dev))
         def onDrop(data):
             instr_nickname = str(data.data("instrument-nickname"), "utf-8")
             dev_nickname = str(data.data("device-nickname"), "utf-8")
