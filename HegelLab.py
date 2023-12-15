@@ -25,7 +25,7 @@ class HegelLab:
         self.loader = LoaderSaver.LoaderSaver(self)
         self.pop = Popup.Popup()
         # model, views
-        self.model = Model.Model()
+        self.model = Model.Model(self)
         self.view_main = MainWindow.MainWindow(self)
         self.view_rack = RackWindow.RackWindow(self)
         self.view_display = DisplayWindow.DisplayWindow(self)
@@ -65,6 +65,7 @@ class HegelLab:
 
     def askClose(self, event):
         if self.pop.askQuit():
+            self.sweep_thread.terminate()
             self.view_main.close()
             self.view_rack.close()
             self.view_display.close()
@@ -174,7 +175,9 @@ class HegelLab:
         self._instanciateGuiDevices(gui_instr, instr_dict)
         self.gui_instruments.append(gui_instr)
         # loading (not sure, featurewise)
-        self.loadGuiInstrument(gui_instr)
+        auto_load = instr_dict.get('auto_load', False)
+        if auto_load:
+            self.loadGuiInstrument(gui_instr)
 
         # "signals"
         self.view_rack.gui_addGuiInstrument(gui_instr)
@@ -260,15 +263,13 @@ class HegelLab:
 
     def setValue(self, gui_dev, val):
         # set the value of the GuiDevice and update the gui
-        try:
-            self.model.setValue(gui_dev.getPhDev(), val)
-            QApplication.processEvents()
-        except Exception as e:
-            tb_str = "".join(traceback.format_tb(e.__traceback__))
-            self.pop.setValueError(e, tb_str)
-            return
-        #self.view_rack.gui_updateDeviceValue(gui_dev, val)
+        self.model.setValue(gui_dev.getPhDev(), val)
+        #QApplication.processEvents()
         self.view_rack.win_set.close()
+    
+    def _setValueError(self, e):
+        tb_str = "".join(traceback.format_tb(e.__traceback__))
+        self.pop.setValueError(e, tb_str)
 
     def renameDevice(self, gui_dev, new_nickname):
         gui_dev.nickname = new_nickname

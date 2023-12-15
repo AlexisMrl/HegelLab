@@ -25,12 +25,9 @@ Need a Python3 installation of PyHegel and the package `pyqtgraph` in version `>
 
 Installation procecure python 3, PyHegel and HegelLab:
 ```py
-# conda create and install:
-conda create -n py311 python=3.11 
+# conda create and install packages:
+conda create -n py311 -c conda-forge python=3.11 ipython numpy scipy pyqt matplotlib pyserial pythonnet pypdf2 pytz pyqtgraph=0.13.1 pyvisa
 conda activate py311
-# activate and install PyVisa
-conda install ipython numpy scipy pyqt pywin32 matplotlib pyserial pythonnet pypdf2 pytz pyqtgraph=0.13.1
-conda install -c conda-forge pyvisa
 # install PyHegel
 cd <PyHegel dir>
 pip install -e .

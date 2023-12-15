@@ -5,18 +5,25 @@ from PyQt5.QtCore import QThread, pyqtSignal
 class setThread(QThread):
     # thread for set commands
     finished_signal = pyqtSignal()
+    error_signal = pyqtSignal(object)
     def __init__(self, dev, value):
         super().__init__()
         self.dev = dev
         self.value = value
     
     def run(self):
-        c.set(self.dev, self.value)
+        try:
+            c.set(self.dev, self.value)
+        except Exception as e:
+            self.error_signal.emit(e)
         self.finished_signal.emit()
 
 class Model:
     # The model is the only one doing the pyHegel commands
     # except for the loading drivers
+
+    def __init__(self, lab):
+        self.lab = lab
     
     setThreads = []
     
@@ -29,8 +36,15 @@ class Model:
         return dev
 
     def getChoices(self, dev):
+        # return possible choices to a list
         if hasattr(dev, "choices"):
-            return dev.choices
+            choices = dev.choices
+            list_choices = None
+            try: list_choices = list(choices)
+            except: pass
+            try: list_choices = list(choices.dict.values())
+            except: pass
+            return list_choices
         else:
             return None
 
@@ -43,6 +57,7 @@ class Model:
         self.setThreads.append(thread)
         def onFinished():
             self.setThreads.remove(thread)
+        thread.error_signal.connect(self.lab._setValueError)
         thread.finished_signal.connect(onFinished)
         thread.start()
 
