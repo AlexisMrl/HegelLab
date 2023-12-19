@@ -1,5 +1,7 @@
 from PyQt5.QtWidgets import QTreeWidget, QAbstractItemView
 from PyQt5 import QtCore
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtGui import QKeyEvent
 
 from src.GuiInstrument import GuiInstrument, GuiDevice
 
@@ -83,3 +85,21 @@ class TreeWidget(QTreeWidget):
         # what happens when the item is dropped
         # implemented by children
         pass
+    
+    def keyPressEvent(self, event):
+        # vim jkhl, g, G
+        key = event.key()
+        if key == Qt.Key_J:
+            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Down, Qt.NoModifier))
+        elif key == Qt.Key_K:
+            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier))
+        elif key == Qt.Key_H:
+            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Left, Qt.NoModifier))
+        elif key == Qt.Key_L:
+            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Right, Qt.NoModifier))
+        elif key == Qt.Key_G:
+            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Home, Qt.NoModifier))
+        elif key == Qt.Key_G and event.modifiers() == Qt.ShiftModifier:
+            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_End, Qt.NoModifier))
+        else:
+            super().keyPressEvent(event)

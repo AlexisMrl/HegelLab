@@ -1,7 +1,6 @@
 from widgets import DisplayWidget
 
 from PyQt5.QtWidgets import (
-    QMainWindow,
     QWidget,
     QHBoxLayout,
     QComboBox,

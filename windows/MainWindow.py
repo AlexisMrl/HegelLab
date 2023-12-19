@@ -1,6 +1,5 @@
 import time
 from PyQt5.QtWidgets import (
-    QMainWindow,
     QLineEdit,
     QTreeWidgetItem,
     QLabel,
@@ -82,7 +81,7 @@ class MainWindow(AltDragWindow):
         )
 
         # -- windows --
-        self.win_sw_setup = QMainWindow()
+        self.win_sw_setup = AltDragWindow()
 
         # -- Connect signals to slots --
         self.actionInstruments.triggered.connect(self.lab.showRack)
@@ -108,11 +107,11 @@ class MainWindow(AltDragWindow):
         instr_nickname = str(data.data("instrument-nickname"), "utf-8")
         dev_nickname = str(data.data("device-nickname"), "utf-8")
         if tree == self.tree_sw:
-            self.lab.addSweepDev(instr_nickname, dev_nickname)
+            self.lab.addSweepDev(instr_nickname, dev_nickname, row)
         elif tree == self.tree_out:
-            self.lab.addOutputDev(instr_nickname, dev_nickname)
+            self.lab.addOutputDev(instr_nickname, dev_nickname, row)
         elif tree == self.tree_log:
-            self.lab.addLogDev(instr_nickname, dev_nickname)
+            self.lab.addLogDev(instr_nickname, dev_nickname, row)
         return True
 
     def onSweepSelectionChanged(self):
@@ -142,24 +141,35 @@ class MainWindow(AltDragWindow):
         self.lab.askClose(event)
 
     # -- gui -- (called by the lab)
-    def _gui_makeItem(self, tree, gui_dev):
+    def _gui_makeItem(self, tree, gui_dev, row):
         item = QTreeWidgetItem()
         item.setChildIndicatorPolicy(QTreeWidgetItem.DontShowIndicatorWhenChildless)
         item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
         tree.setData(item, gui_dev)
-        tree.addTopLevelItem(item)
+        tree.insertTopLevelItem(row, item)
 
-    def gui_addSweepGuiDev(self, gui_dev):
-        # add item to the sweep tree:
-        self._gui_makeItem(self.tree_sw, gui_dev)
+    def gui_addSweepGuiDev(self, gui_dev, row):
+        # add item to the sweep tree at row:
+        # show_config if it's new to the tree
+        show_config = True
+        item = self.tree_sw.findItemByData(gui_dev)
+        if item:
+            index = self.tree_sw.indexOfTopLevelItem(item)
+            self.tree_sw.takeTopLevelItem(index)
+            show_config = False
+        self._gui_makeItem(self.tree_sw, gui_dev, row)
+        return show_config
 
-    def gui_addOutItem(self, gui_dev):
+    def gui_changeSweepOrder(self, item, new_row):
+        self.tree_sw.moveItem(item, new_row)
+
+    def gui_addOutItem(self, gui_dev, row):
         # add item to the output tree:
-        self._gui_makeItem(self.tree_out, gui_dev)
+        self._gui_makeItem(self.tree_out, gui_dev, row)
 
-    def gui_addLogItem(self, gui_dev):
+    def gui_addLogItem(self, gui_dev, row):
         # add item to the log tree:
-        self._gui_makeItem(self.tree_log, gui_dev)
+        self._gui_makeItem(self.tree_log, gui_dev, row)
 
     def gui_renameDevice(self, gui_dev):
         item = self.tree_sw.findItemByData(gui_dev)

@@ -4,11 +4,12 @@ import sys
 from PyQt5.QtWidgets import QApplication
 
 from windows import MainWindow, RackWindow, DisplayWindow, MonitorWindow
-from src import LoaderSaver, Model, Popup, SweepThread, Drivers
+from widgets import WindowWidget
+from src import LoaderSaver, Model, Popup, SweepThread, Shortcuts
 from src.GuiInstrument import GuiInstrument, GuiDevice
 from src.SweepIdxIter import IdxIter
 
-from pyHegel import instruments # for eval
+from src import Drivers # for eval
 
 import numpy as np
 import time
@@ -20,8 +21,10 @@ import os
 
 
 class HegelLab:
-    def __init__(self, app=None):
+    def __init__(self, app):
         self.app = app
+        WindowWidget.AltDragWindow.lab = self
+
         self.loader = LoaderSaver.LoaderSaver(self)
         self.pop = Popup.Popup()
         # model, views
@@ -30,7 +33,6 @@ class HegelLab:
         self.view_rack = RackWindow.RackWindow(self)
         self.view_display = DisplayWindow.DisplayWindow(self)
         self.view_monitor = MonitorWindow.MonitorWindow(self)
-
 
         # data
         self.instr_list = self.loader.importFromJSON('default_instruments.json')
@@ -109,9 +111,7 @@ class HegelLab:
         # build GuiInstrument and populate dvices, but no ph_instr nor ph_dev
         # loading is done in loadGuiInstrument.
         nickname = self._checkInstrNickname(nickname)
-        #ph_class = eval(instr_dict.get('ph_class'))
         ph_class = instr_dict.get('ph_class')
-        #driver = eval(instr_dict.get('driver', 'Drivers.Default'))
         driver = instr_dict.get('driver', 'Drivers.Default')
         # instanciate GuiInstrument
         gui_instr = GuiInstrument(nickname, ph_class, driver, addr, slot)
@@ -279,23 +279,21 @@ class HegelLab:
 
     # -- SWEEP TREES --
 
-    def addSweepDev(self, instr_nickname, dev_nickname):
+    def addSweepDev(self, instr_nickname, dev_nickname, row):
         # add a device to the sweep tree, launch the config window
         gui_dev = self.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
         
         if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
             return
 
+        # if the device is not gettable, ask if we want to add it anyway
         if gui_dev.type[0] == False and self.pop.notSettable() == False:
-            # if the device is not gettable, ask if we want to add it anyway
             return
-        if self.view_main.tree_sw.findItemByData(gui_dev) != None:
-            self.pop.devAlreadyHere()
-            return
-        self.view_main.gui_addSweepGuiDev(gui_dev)
-        self.showSweepConfig(gui_dev)
+        
+        if self.view_main.gui_addSweepGuiDev(gui_dev, row):
+            self.showSweepConfig(gui_dev)
 
-    def addOutputDev(self, instr_nickname, dev_nickname):
+    def addOutputDev(self, instr_nickname, dev_nickname, row):
         # add a device to the output tree
         gui_dev = self.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
         if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
@@ -305,9 +303,9 @@ class HegelLab:
         if self.view_main.tree_out.findItemByData(gui_dev) != None:
             self.pop.devAlreadyHere()
             return
-        self.view_main.gui_addOutItem(gui_dev)
+        self.view_main.gui_addOutItem(gui_dev, row)
 
-    def addLogDev(self, instr_nickname, dev_nickname):
+    def addLogDev(self, instr_nickname, dev_nickname, row):
         # add a device to the log tree
         gui_dev = self.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
         if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
@@ -316,7 +314,7 @@ class HegelLab:
         if self.view_main.tree_log.findItemByData(gui_dev) != None:
             self.pop.devAlreadyHere()
             return
-        self.view_main.gui_addLogItem(gui_dev)
+        self.view_main.gui_addLogItem(gui_dev, row)
 
     def showSweepConfig(self, gui_dev):
         # launch the sweep config window for gui_dev
@@ -499,7 +497,7 @@ if __name__ == "__main__":
     from PyQt5.QtGui import QPixmap
     from PyQt5 import QtCore
 
-    with_app = False
+    create_app = False
     if len(sys.argv) > 1 and sys.argv[1] == "--with-app":
         with_app = True
         QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
@@ -528,10 +526,10 @@ if __name__ == "__main__":
 
     splash.show()
 
-    hl = HegelLab()
+    hl = HegelLab(app)
     splash.finish(hl.view_main)
 
     hl.showMain()
     
-    if with_app:
+    if create_app:
         sys.exit(app.exec())
