@@ -122,7 +122,7 @@ class RackWindow(AltDragWindow):
             value_wid = QComboBox()
             for choice in gui_dev.ph_choice:
                 value_wid.addItem(str(choice), choice)
-            #value_wid.value = value_wid.currentData
+            value_wid.value = value_wid.currentData
             layout.addWidget(value_wid)
         else:  # spinbox by default
             value_wid = PyScientificSpinBox()
@@ -144,6 +144,7 @@ class RackWindow(AltDragWindow):
         bt_ok.clicked.connect(okClicked)
         bt_cancel.clicked.connect(cancelClicked)
         self.win_set.show()
+        self.win_set.raise_()
     
     def onConfigDevice(self):
         selected_item = self.tree.selectedItem()
@@ -255,6 +256,7 @@ class RackWindow(AltDragWindow):
                 le_address.setEnabled(False)
                 le_address.clear()
             slots = settings.get('slots', None)
+            cb_slot.clear()
             if slots:
                 lbl_slot.setEnabled(True)
                 cb_slot.setEnabled(True)
@@ -262,7 +264,6 @@ class RackWindow(AltDragWindow):
             else:
                 lbl_slot.setEnabled(False)
                 cb_slot.setEnabled(False)
-                cb_slot.clear()
 
         cb_instr.currentTextChanged.connect(
             lambda: cbInstrChanged(cb_instr.currentData())

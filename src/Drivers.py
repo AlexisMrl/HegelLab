@@ -202,6 +202,7 @@ class ami430(Default):
                 # create and start axis_loading thread
                 th = LoadThread(nickname, instruments.AmericanMagnetics_model430, addr)
                 th.loaded_signal.connect(lambda instr, ax=ax: loaded_ax(instr, ax))
+                th.error_signal.connect(lambda e: lab.loadGuiInstrumentError(gui_instr, e))
                 gui_instr._loading_threads.append(th)
                 th.start()
                 btn_load_all.setText('Loading...')

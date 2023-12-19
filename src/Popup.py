@@ -104,6 +104,15 @@ class Popup:
         )
         return
 
+    def getValueError(self, exception, traceback):
+        self._popErrorWithDetails(
+            QMessageBox.Warning,
+            "Error",
+            "Error while getting value: " + str(exception),
+            traceback,
+        )
+        return
+
     def devIsNeeded(self):
         self._popError(
             QMessageBox.Warning,

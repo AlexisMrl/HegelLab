@@ -383,12 +383,14 @@ class Target:
             if data_col.shape[0] == self.parent.axes["y"].shape[0]:
                 self.vertical.setData(data_col, self.parent.axes["y"])
             mi, ma = min(data_col), max(data_col)
-            if str(mi) != 'nan' and str(ma) != 'nan':
-                self.parent.vertical.setXRange(mi, ma)
+            #print("x", mi,ma)
+            #if str(mi) != 'nan' and str(ma) != 'nan':
+            #   self.parent.vertical.setXRange(mi, ma)
         if y != -1:
             data_row = self.parent.image.image[:, y]
             if data_row.shape[0] == self.parent.axes["x"].shape[0]:
                 self.horizontal.setData(self.parent.axes["x"], data_row)
             mi, ma = min(data_row), max(data_row)
-            if str(mi) != 'nan' and str(ma) != 'nan':
-                self.parent.horizontal.setYRange(mi, ma)
+            #print("y", mi,ma)
+            #f str(mi) != 'nan' and str(ma) != 'nan':
+            #   self.parent.horizontal.setYRange(mi, ma)

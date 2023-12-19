@@ -28,21 +28,30 @@
             "ph_class": "instruments.zurich_UHF",
             "address": "dev2021",
             "devices": [
-                {
-                    "nickname": "demod_en1",
+                {"nickname": "sigouts_en%i",
+                    "ph_name": "sigouts_en",
+                    "extra_args_multi": {"ch": [0, 1]},
+                    "_comment": "2 dev at once: (sigouts_en0, ch=0) and (sigouts_en1, ch=1)"},
+                {"nickname": "sigouts_range%i",
+                    "ph_name": "sigouts_range",
+                    "extra_args_multi": {"ch": [0, 1]}},
+                {"nickname": "osc_freq%i",
+                    "ph_name": "osc_freq",
+                    "extra_args_multi": {"ch": [0, 1, 2, 3, 4, 5, 6, 7]}},
+                {"nickname": "demod_en%i",
                     "ph_name": "demod_en",
-                    "extra_args": {"ch": 0}
-                },
-                {
-                    "nickname": "demod_en2",
-                    "ph_name": "demod_en",
-                    "extra_args": {"ch": 1}
-                },
-                {
-                    "nickname": "readval1",
+                    "extra_args_multi": {"ch": [0, 1, 2, 3, 4, 5, 6, 7]}},
+                {"nickname": "demod_tc%i",
+                    "ph_name": "demod_tc",
+                    "extra_args_multi": {"ch": [0, 1, 2, 3, 4, 5, 6, 7]}},
+                {"nickname": "demod%i_r",
                     "ph_name": "readval",
-                    "extra_args": {"ch": 1, "vals": ["r", "deg"]}
-                }
+                    "extra_args": {"vals": ["r"]},
+                    "extra_args_multi": {"ch": [0, 1, 2, 3, 4, 5, 6, 7]}},
+                {"nickname": "demod%i_deg",
+                    "ph_name": "readval",
+                    "extra_args": {"vals": ["deg"]},
+                    "extra_args_multi": {"ch": [0, 1, 2, 3, 4, 5, 6, 7]}}
             ]
         },
 
@@ -50,7 +59,25 @@
             "name": "iTest_Be214x",
             "ph_class": "instruments.iTest_be214x",
             "address": "TCPIP::192.168.150.145::5025::SOCKET",
-            "slots": [1, 2, 3, 4],
+            "slots": [7, 8, 9],
+            "devices": [
+                {
+                    "nickname": "output_en1",
+                    "ph_name": "output_en",
+                    "extra_args": {"ch": 1}
+                },
+                {
+                    "nickname": "range1",
+                    "ph_name": "range",
+                    "extra_args": {"ch": 1}
+                }
+            ]
+        },
+        {
+            "name": "iTest_Be2102",
+            "ph_class": "instruments.iTest_be2102",
+            "address": "TCPIP::192.168.150.145::5025::SOCKET",
+            "slots": [1, 2, 3, 4, 5, 6],
             "devices": [
                 {
                     "nickname": "output_en1",
@@ -81,18 +108,13 @@
             "name": "AMI430_magnet_vector",
             "ph_class": "instruments.AmericanMagnetics_vector",
             "driver": "Drivers.ami430",
-            "address_x": "tcpip::192.168.137.138::7180::socket",
-            "address_y": "tcpip::192.168.137.139::7180::socket",
-            "address_z": "tcpip::192.168.137.66::7180::socket",
+            "address_x": "tcpip::192.168.137.96::7180::socket",
+            "address_y": "tcpip::192.168.137.9::7180::socket",
+            "address_z": "tcpip::192.168.137.198::7180::socket",
             "devices": [
                 {"ph_name": "ramp_to_index"},
                 {"ph_name": "sequence", "type": {"set":false, "get":true}}
             ]
-        },
-
-        {
-            "name": "Virtual gate instrument",
-            "ph_class": "instruments.virtual_gates_instr"
         }
     ]
 }

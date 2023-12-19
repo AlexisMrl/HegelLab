@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>938</width>
-    <height>532</height>
+    <height>534</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -226,7 +226,7 @@
      <x>0</x>
      <y>0</y>
      <width>938</width>
-     <height>26</height>
+     <height>31</height>
     </rect>
    </property>
   </widget>
@@ -307,6 +307,17 @@
    <header>pyHegel.gui.ScientificSpinBox</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>sw_remove</tabstop>
+  <tabstop>tree_out</tabstop>
+  <tabstop>out_remove</tabstop>
+  <tabstop>tree_log</tabstop>
+  <tabstop>log_remove</tabstop>
+  <tabstop>te_comment</tabstop>
+  <tabstop>sb_before_wait</tabstop>
+  <tabstop>tree_sw</tabstop>
+  <tabstop>cb_alternate</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
