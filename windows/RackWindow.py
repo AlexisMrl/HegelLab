@@ -1,6 +1,6 @@
 from PyQt5 import QtGui, uic
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QWidget
+from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import (
     QPushButton,
     QVBoxLayout,
@@ -33,13 +33,13 @@ class RackWindow(AltDragWindow):
         self.tree.setColumnWidth(0, 250)
         self.tree.setColumnWidth(2, 350)
         self.tree.setDragDropMode(QAbstractItemView.DragOnly)
-        self.tree.setIconSize(QtCore.QSize(13, 13))  # noqa: F821
+        self.tree.setIconSize(QtCore.QSize(13, 13))
         self.hbox_device.setEnabled(False)
 
-        self.win_add = QMainWindow()
-        self.win_set = QMainWindow()
-        self.win_devconfig = QMainWindow()
-        self.win_rename = QMainWindow()
+        self.win_add = AltDragWindow()
+        self.win_set = AltDragWindow()
+        self.win_devconfig = AltDragWindow()
+        self.win_rename = AltDragWindow()
 
         # -- Connect signals to slots --
         self.actionAdd.triggered.connect(self.onAddInstrument)
