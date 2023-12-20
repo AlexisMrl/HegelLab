@@ -10,7 +10,7 @@ class GuiInstrument:
         self.address = address
         self.slot = slot
 
-        self.instr_dict = {}  # the dict from json file (as is (not updated)). Used for driver with extra args
+        self.instr_dict = {}  # the dict from json file (as is (not updated!)). Used ONLY for driver with extra args
         self.ph_instr = None
         self.gui_devices = []  # list of GuiDevice
 
@@ -37,6 +37,9 @@ class GuiInstrument:
                 continue
             return gui_device
         return None
+    
+    def removeGuiDevice(self, gui_dev):
+        self.gui_devices.remove(gui_dev)
 
     def toDict(self):
         # for json file saving

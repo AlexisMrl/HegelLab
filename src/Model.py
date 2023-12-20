@@ -6,6 +6,7 @@ class setThread(QThread):
     # thread for set commands
     finished_signal = pyqtSignal()
     error_signal = pyqtSignal(object)
+
     def __init__(self, dev, value):
         super().__init__()
         self.dev = dev
@@ -24,16 +25,26 @@ class Model:
 
     def __init__(self, lab):
         self.lab = lab
-    
-    setThreads = []
-    
-    def close(self):
-        for thread in self.setThreads:
-            thread.terminate()
 
     def getDevice(self, instr, name):
         dev = getattr(instr, name)
         return dev
+    
+    def getDevicesList(self, instr):
+        # return a string list of device name
+        # the *very loose* criteria for being a device is:
+        #    - having a get attr
+        #    - having a set attr
+        #    - does not start with '_'
+        dev_list = []
+        for dev_str in dir(instr):
+            if dev_str.startswith('_'):
+                continue
+            dev = getattr(instr, dev_str)
+            if hasattr(dev, 'get') and hasattr(dev, 'set'):
+                dev_list.append(dev_str)
+        return dev_list
+
 
     def getChoices(self, dev):
         # return possible choices to a list
@@ -48,17 +59,25 @@ class Model:
         else:
             return None
 
-    def getValue(self, dev):
+    def getValue(self, dev, fn_after=None):
         return c.get(dev)
+        #thread = getThread(dev)
+        #setattr(dev, '_HLgetThread', thread)
+        #def onFinished(value):
+            #delattr(dev, '_HLgetThread')
+            #if fn_after: fn_after(value)
+        #thread.finished_signal.connect(onFinished)
+        #thread.error_signal.connect(self.lab.getValueError)
+        #thread.start()
 
     def setValue(self, dev, value):
         #c.set(dev, value)
         thread = setThread(dev, value)
-        self.setThreads.append(thread)
+        setattr(dev, '_HLsetThread', thread)
         def onFinished():
-            self.setThreads.remove(thread)
-        thread.error_signal.connect(self.lab._setValueError)
+            delattr(dev, '_HLsetThread')
         thread.finished_signal.connect(onFinished)
+        thread.error_signal.connect(self.lab.setValueError)
         thread.start()
 
     def startSweep(self, **kwargs):
@@ -106,10 +125,11 @@ class Model:
         if new_dev == basedev:
             return None
         
-        new_dev_name = f"wrap_{basedev.name}"
+        basedev_dev = basedev[0] if isinstance(basedev, tuple) else basedev
+        new_dev_name = f"_wrap_{basedev_dev.name}"
         if hasattr(instrument, new_dev_name):
             delattr(instrument, new_dev_name)
-        setattr(instrument, f"wrap_{basedev.name}", new_dev)
+        setattr(instrument, f"_wrap_{basedev_dev.name}", new_dev)
         instrument._create_devs_helper()
 
         return new_dev

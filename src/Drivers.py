@@ -1,7 +1,7 @@
 from pyHegel.gui import ScientificSpinBox
 from pyHegel import instruments, instruments_base
 from PyQt5 import QtGui, uic
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, Qt
 from PyQt5.QtWidgets import (
     QWidget,
     QGridLayout,
@@ -10,6 +10,8 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QFormLayout,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem
 )
 from widgets.WindowWidget import AltDragWindow
 
@@ -75,7 +77,41 @@ class Default:
 
     @staticmethod
     def config(lab, gui_instr):
-        pass
+        if gui_instr.ph_instr is None: return
+
+        win = AltDragWindow()
+        wid = QWidget()
+        win.setCentralWidget(wid)
+        layout = QGridLayout()
+        wid.setLayout(layout)
+
+        # widgets
+        lw = QListWidget()
+        lw.setSelectionMode(2)
+        dev_list = lab.model.getDevicesList(gui_instr.ph_instr)
+        #already_loaded_dev = [gui_dev.ph_name for gui_dev in gui_instr.gui_devices]
+        lw.addItems(dev_list)
+        btn_add = QPushButton('Add devices')
+        btn_cancel = QPushButton('Cancel')
+
+        layout.addWidget(lw, 0, 0, 1, 2)
+        layout.addWidget(btn_add, 1, 0)
+        layout.addWidget(btn_cancel, 1, 1)
+
+        def onAdd():
+            devices = []
+            for item in lw.selectedItems():
+                devices.append(dict(ph_name=item.text()))
+            lab.newDevicesFromRack(gui_instr, devices)
+
+            win.close()
+        btn_add.clicked.connect(onAdd)
+        btn_cancel.clicked.connect(win.close)
+
+        gui_instr._win_devs = win
+        win.show()
+
+
 
     @staticmethod
     def sweep(lab, gui_dev):
@@ -96,11 +132,13 @@ class Default:
         # widgets:
         label_start = QLabel("Start:")
         label_stop = QLabel("Stop:")
-        label_step = QLabel("# pts:")
+        label_npts = QLabel("# pts:")
+        label_step = QLabel("Steps:")
         spin_start = ScientificSpinBox.PyScientificSpinBox()
         spin_stop = ScientificSpinBox.PyScientificSpinBox()
         spin_npts = QSpinBox()
         spin_npts.setMaximum(1000000)
+        spin_step = ScientificSpinBox.PyScientificSpinBox(buttonSymbols=2, readOnly=True)
         ok_button = QPushButton("Ok")
 
         # set values if not None:
@@ -115,17 +153,29 @@ class Default:
         # add to layout:
         layout.addWidget(label_start, 0, 0)
         layout.addWidget(label_stop, 1, 0)
-        layout.addWidget(label_step, 2, 0)
+        layout.addWidget(label_npts, 2, 0)
+        layout.addWidget(label_step, 3, 0)
         layout.addWidget(spin_start, 0, 1)
         layout.addWidget(spin_stop, 1, 1)
         layout.addWidget(spin_npts, 2, 1)
-        layout.addWidget(ok_button, 3, 1)
+        layout.addWidget(spin_step, 3, 1)
+        layout.addWidget(ok_button, 4, 1)
 
         # connect signals:
+        def updateStep():
+            start, stop = spin_start.value(), spin_stop.value(),
+            nbpts = spin_npts.value()
+            try:
+                step = (stop-start) / (nbpts-1)
+                spin_step.setValue(step)
+            except:
+                spin_step.setSpecialValueText('nan')
+        spin_start.valueChanged.connect(updateStep)
+        spin_stop.valueChanged.connect(updateStep)
+        spin_npts.valueChanged.connect(updateStep)
+
         def onOk():
             win.close()
-            del gui_dev._win_sweep
-
         ok_button.clicked.connect(onOk)
         ok_button.clicked.connect(
             lambda: lab.setSweepValues(

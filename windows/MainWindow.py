@@ -106,12 +106,40 @@ class MainWindow(AltDragWindow):
         # extract data:
         instr_nickname = str(data.data("instrument-nickname"), "utf-8")
         dev_nickname = str(data.data("device-nickname"), "utf-8")
+        gui_dev = self.lab.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
+
+        add_fn = {self.tree_sw: self.lab.addSweepDev,
+                  self.tree_out: self.lab.addOutputDev,
+                  self.tree_log: self.lab.addLogDev}
+
+        item = tree.findItemByData(gui_dev)
+
         if tree == self.tree_sw:
-            self.lab.addSweepDev(instr_nickname, dev_nickname, row)
+            if not item:
+                self.lab.addSweepDev(gui_dev, row)
+            else:
+                # item is already in the tree, bypass lab, just reorder
+                self.gui_addSweepGuiDev(gui_dev, row)
+                old_row = tree.indexFromItem(item).row()
+                tree.takeTopLevelItem(old_row)
+                self.gui_updateSweepValues(gui_dev)
+
         elif tree == self.tree_out:
-            self.lab.addOutputDev(instr_nickname, dev_nickname, row)
+            if not item:
+                self.lab.addOutputDev(gui_dev, row)
+            else:
+                # item is already in the tree, bypass lab, just reorder
+                self.gui_addOutItem(gui_dev, row)
+                old_row = tree.indexFromItem(item).row()
+                tree.takeTopLevelItem(old_row)
         elif tree == self.tree_log:
-            self.lab.addLogDev(instr_nickname, dev_nickname, row)
+            if not item:
+                self.lab.addLogDev(gui_dev, row)
+            else:
+                # item is already in the tree, bypass lab, just reorder
+                self.gui_addOutItem(gui_dev, row)
+                old_row = tree.indexFromItem(item).row()
+                tree.takeTopLevelItem(old_row)
         return True
 
     def onSweepSelectionChanged(self):
@@ -150,18 +178,7 @@ class MainWindow(AltDragWindow):
 
     def gui_addSweepGuiDev(self, gui_dev, row):
         # add item to the sweep tree at row:
-        # show_config if it's new to the tree
-        show_config = True
-        item = self.tree_sw.findItemByData(gui_dev)
-        if item:
-            index = self.tree_sw.indexOfTopLevelItem(item)
-            self.tree_sw.takeTopLevelItem(index)
-            show_config = False
         self._gui_makeItem(self.tree_sw, gui_dev, row)
-        return show_config
-
-    def gui_changeSweepOrder(self, item, new_row):
-        self.tree_sw.moveItem(item, new_row)
 
     def gui_addOutItem(self, gui_dev, row):
         # add item to the output tree:

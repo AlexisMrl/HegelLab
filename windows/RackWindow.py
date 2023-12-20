@@ -52,6 +52,7 @@ class RackWindow(AltDragWindow):
         self.pb_set.clicked.connect(self.onSetValue)
         self.pb_rename.clicked.connect(self.onRename)
         self.pb_config.clicked.connect(self.onConfigDevice)
+        self.pb_remove_dev.clicked.connect(self.onRemoveDev)
         self.importFromJSON.triggered.connect(self.lab.importFromJSON)
         self.exportToPyHegel.triggered.connect(self.lab.exportToPyHegel)
         self.exportToJSON.triggered.connect(self.lab.exportToJSON)
@@ -67,6 +68,7 @@ class RackWindow(AltDragWindow):
             self.pb_set.setEnabled(False)
             self.pb_rename.setEnabled(False)
             self.pb_config.setEnabled(False)
+            self.pb_remove_dev.setEnabled(False)
             return
         data = self.tree.getData(self.tree.selectedItem())
         if isinstance(data, GuiInstrument):
@@ -78,19 +80,20 @@ class RackWindow(AltDragWindow):
             self.pb_set.setEnabled(False)
             self.pb_rename.setEnabled(False)
             self.pb_config.setEnabled(False)
+            self.pb_remove_dev.setEnabled(False)
         elif isinstance(data, GuiDevice):
             # when a device is selected
             self.actionRemove.setEnabled(False)
             self.actionLoad.setEnabled(False)
             self.actionConfig.setEnabled(False)
-            self.pb_get.setEnabled(True)
             self.pb_rename.setEnabled(True)
             self.pb_config.setEnabled(True)
+            self.pb_remove_dev.setEnabled(True)
             gui_dev = data
-            if gui_dev.type[0]:
-                self.pb_set.setEnabled(True)
-            else:
-                self.pb_set.setEnabled(False)
+            if gui_dev.type[0]: self.pb_set.setEnabled(True)
+            else: self.pb_set.setEnabled(False)
+            if gui_dev.type[1]: self.pb_get.setEnabled(True)
+            else: self.pb_get.setEnabled(False)
 
     def onDoubleClick(self, item, _):
         data = self.tree.getData(item)
@@ -165,7 +168,9 @@ class RackWindow(AltDragWindow):
             win.cb_limit.setChecked(True)
         win.sb_min.setValue(limit.get('min', 0))
         win.sb_max.setValue(limit.get('max', 0))
+        win.le_kwargs.setText(", ".join([f"{key}={repr(val)}" for key, val in gui_dev.extra_args.items()]))
         def onCreate():
+            self.lab.setGuiDevExtraArgs(gui_dev, win.le_kwargs.text())
             if win.cb_ramp.isChecked():
                 gui_dev.logical_kwargs['ramp'] = {'rate': win.sb_ramp.value()}
             else:
@@ -200,6 +205,13 @@ class RackWindow(AltDragWindow):
         selected_item = self.tree.selectedItem()
         gui_instr = self.tree.getData(selected_item)
         self.lab.removeGuiInstrument(gui_instr)
+    
+    def onRemoveDev(self):
+        selected_item = self.tree.selectedItem()
+        gui_dev = self.tree.getData(selected_item)
+        gui_instr = gui_dev.parent
+        gui_instr.removeGuiDevice(gui_dev)
+        self.gui_updateGuiInstrument(gui_instr)
 
     def closeEvent(self, event):
         self.win_add.close()
