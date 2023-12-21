@@ -82,6 +82,9 @@ class Default:
         if gui_instr.ph_instr is None: return
 
         win = Window()
+        win.setWindowTitle("Add devices " + gui_instr.getDisplayName())
+        win.setWindowIcon(QtGui.QIcon("resources/resources/instruments.png"))
+        wid = QWidget()
         wid = QWidget()
         win.setCentralWidget(wid)
         layout = QGridLayout()
@@ -116,7 +119,7 @@ class Default:
         btn_cancel.clicked.connect(win.close)
 
         gui_instr._win_devs = win
-        win.show()
+        win.focus()
 
 
 
@@ -195,7 +198,7 @@ class Default:
         )
 
         gui_dev._win_sweep = win
-        win.show()
+        win.focus()
 
 
 ####################
@@ -268,7 +271,7 @@ class ami430(Default):
 
         btn_load_all.clicked.connect(onLoadAll)
 
-        win.show()
+        win.focus()
 
     @staticmethod
     def config(lab, gui_instr):
@@ -332,7 +335,7 @@ class ami430(Default):
 
 
         gui_dev._win_sweep = win
-        win.show()
+        win.focus()
 
 
         #ok_button.clicked.connect(onOk)

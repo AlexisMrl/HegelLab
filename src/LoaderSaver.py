@@ -63,6 +63,6 @@ class LoaderSaver:
         # generate text
         for gui_instr in gui_instruments:
             textedit.append(gui_instr.toPyHegelScript())
-        win.show()
+        win.focus()
 
             

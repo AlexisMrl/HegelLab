@@ -17,6 +17,12 @@ class Window(QMainWindow):
         Window.windows.append(self)
         if Window.lab is not None:
             self.initShortcuts()
+    
+    def focus(self):
+        self.setFocus(True)
+        self.activateWindow()
+        self.raise_()
+        self.show()
 
     @staticmethod
     def killAll():

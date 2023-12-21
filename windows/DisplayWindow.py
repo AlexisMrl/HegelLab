@@ -92,7 +92,7 @@ class DisplayWindow(Window):
             self.displays[1].hide()
             if self.isHidden():
                 self.resize(1000, 600)
-        self.show()
+        self.focus()
 
     # -- on sweep signals --
     def onIteration(self, current_sweep):

@@ -69,6 +69,12 @@ class Popup:
         )
         return
     
+    def devRampZero(self):
+        self._popError(QMessageBox.Warning, "Warning", "Ramp rate cannot be 0.")
+
+    def devScaleZero(self):
+        self._popError(QMessageBox.Warning, "Warning", "Scale factor cannot be 0.")
+    
     def devExtraArgsEvalFail(self, exception, traceback):
         self._popError(
             QMessageBox.Warning,

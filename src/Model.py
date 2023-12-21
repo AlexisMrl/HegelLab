@@ -7,10 +7,14 @@ class setThread(QThread):
     finished_signal = pyqtSignal()
     error_signal = pyqtSignal(object)
 
-    def __init__(self, dev, value):
+    def __init__(self, dev, stop_fn):
         super().__init__()
         self.dev = dev
-        self.value = value
+        self.stopping_function = stop_fn
+        self.val = None
+    
+    def stop(self):
+        self.stopping_function()
     
     def run(self):
         try:
@@ -70,14 +74,12 @@ class Model:
         #thread.error_signal.connect(self.lab.getValueError)
         #thread.start()
 
-    def setValue(self, dev, value):
+    def setValue(self, gui_dev, value):
         #c.set(dev, value)
-        thread = setThread(dev, value)
-        setattr(dev, '_HLsetThread', thread)
-        def onFinished():
-            delattr(dev, '_HLsetThread')
-        thread.finished_signal.connect(onFinished)
-        thread.error_signal.connect(self.lab.setValueError)
+        thread = gui_dev.set_thread
+        thread.stop()
+        thread.wait()
+        thread.value = value
         thread.start()
 
     def startSweep(self, **kwargs):
@@ -92,39 +94,57 @@ class Model:
         settable = True if dev._setdev_p is not None else False
         gettable = True if dev._getdev_p is not None else False
         return (settable, gettable)
-
-    def makeLogicalDevice(self, basedev, gui_dev_kwargs, instrument):
+    
+    def _initSetThread(self, dev, stop_fn):
+        thread = setThread(dev, stop_fn)
+        #thread.finished_signal.connect(onFinished)
+        thread.error_signal.connect(self.lab.setValueError)
+        return thread
+        
+    def makeLogicalDevice(self, gui_dev, gui_dev_kwargs, instrument):
         # kwargs = {'scale':{kw scale}, 'ramp':{kw ramp}, 'limit':{kw limit}}
         # (not dict but OrederedDict)
         # The order of creation is: 1 scale, 2 ramp, 3 limit
+
+        basedev = gui_dev.getPhDev(basedev=True)
+
         limit_cls = instruments.LimitDevice
         ramp_cls = instruments.RampDevice
         scale_cls = instruments.ScalingDevice
 
         new_dev = basedev
+        stop_fn = lambda: None if not isinstance(basedev, instruments.RampDevice) else basedev.stop
+    
+        
         
         ramp_kw = gui_dev_kwargs.get('ramp', {}).copy()
         scale_kw = gui_dev_kwargs.get('scale', {}).copy()
         limit_kw = gui_dev_kwargs.get('limit', {}).copy()
 
-        if ramp_kw:
+        if ramp_kw: #RAMP
             new_dev = ramp_cls(new_dev, **ramp_kw)
             new_dev._quiet_del = True
-        
-        if scale_kw:
+            stop_fn = new_dev.stop
+        else:
+            gui_dev.stop_ramping_function = lambda: None
+        if scale_kw: #SCALE
             scale_kw["scale_factor"] = scale_kw.pop("factor")
             scale_kw["only_val"] = True
             new_dev = scale_cls(new_dev, **scale_kw)
             new_dev._invert_trans = True
             new_dev._quiet_del = True
-
-        if limit_kw:
+        if limit_kw: #LIMIT
             new_dev = limit_cls(new_dev, **limit_kw)
             new_dev._quiet_del = True
-            
+        
+        # init set thread:
+        thread = self._initSetThread(new_dev, stop_fn)
+        gui_dev.set_thread = thread
+
         if new_dev == basedev:
             return None
         
+        # make new dev an actual device of instr
         basedev_dev = basedev[0] if isinstance(basedev, tuple) else basedev
         new_dev_name = f"_wrap_{basedev_dev.name}"
         if hasattr(instrument, new_dev_name):

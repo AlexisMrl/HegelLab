@@ -146,8 +146,7 @@ class RackWindow(Window):
 
         bt_ok.clicked.connect(okClicked)
         bt_cancel.clicked.connect(cancelClicked)
-        self.win_set.show()
-        self.win_set.raise_()
+        self.win_set.focus()
     
     def onConfigDevice(self):
         selected_item = self.tree.selectedItem()
@@ -184,13 +183,11 @@ class RackWindow(Window):
             else:
                 gui_dev.logical_kwargs['limit'] = {}
             self.lab.loadGuiLogicalDevice(gui_dev)
-            self.gui_updateGuiInstrument(gui_dev.parent)
-            win.close()
         win.pb_create.clicked.connect(onCreate)
         def onCancel():
             win.close()
         win.pb_cancel.clicked.connect(onCancel)
-        win.show()
+        win.focus()
     
     def onActionLoad(self):
         selected_item = self.tree.selectedItem()
@@ -338,7 +335,7 @@ class RackWindow(Window):
         bt_ok.clicked.connect(okClicked)
         bt_cancel.clicked.connect(self.win_add.close)
 
-        self.win_add.show()
+        self.win_add.focus()
 
     # window rename device
     def onRename(self):
@@ -376,7 +373,7 @@ class RackWindow(Window):
 
         bt_ok.clicked.connect(okClicked)
         bt_cancel.clicked.connect(cancelClicked)
-        self.win_rename.show()
+        self.win_rename.focus()
 
 
     # -- end windows --
@@ -455,6 +452,7 @@ class RackWindow(Window):
     def gui_updateDeviceValue(self, gui_dev, value):
         # update the value of the item corresponding to gui_dev
         dev_item = self.tree.findItemByData(gui_dev)
+        if not dev_item: return
         dev_item.setText(1, str(value))
 
     # -- end gui_ --

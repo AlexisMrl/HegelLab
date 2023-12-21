@@ -61,34 +61,40 @@
             "address": "TCPIP::192.168.150.145::5025::SOCKET",
             "slots": [7, 8, 9],
             "devices": [
-                {
-                    "nickname": "output_en1",
+                {"nickname_multi": ["en_ch1", "en_ch2", "en_ch3", "en_ch4"],
                     "ph_name": "output_en",
-                    "extra_args": {"ch": 1}
-                },
-                {
-                    "nickname": "range1",
+                    "extra_args_multi":{"ch": [1, 2, 3, 4]}},
+                {"nickname_multi": ["level_ch1", "level_ch2", "level_ch3", "level_ch4"],
+                    "ph_name": "ramp",
+                    "extra_args_multi": {"ch": [1, 2, 3, 4]}},
+                {"nickname_multi": ["range_ch1", "range_ch2", "range_ch3", "range_ch4"],
                     "ph_name": "range",
-                    "extra_args": {"ch": 1}
-                }
+                    "extra_args_multi":{"ch": [1, 2, 3, 4]}},
+                {"nickname_multi": ["current_ch1", "current_ch2", "current_ch3", "current_ch4"],
+                    "ph_name": "meas_out_current",
+                    "extra_args_multi":{"ch": [1, 2, 3, 4]}},
+                {"nickname_multi": ["volt_ch1", "volt_ch2", "volt_ch3", "volt_ch4"],
+                    "ph_name": "meas_out_volt",
+                    "extra_args_multi":{"ch": [1, 2, 3, 4]}},
+                {"nickname_multi": ["slope_ch1", "slope_ch2", "slope_ch3", "slope_ch4"],
+                    "ph_name": "slope",
+                    "extra_args_multi":{"ch": [1, 2, 3, 4]}}
             ]
         },
+
         {
             "name": "iTest_Be2102",
             "ph_class": "instruments.iTest_be2102",
             "address": "TCPIP::192.168.150.145::5025::SOCKET",
             "slots": [1, 2, 3, 4, 5, 6],
             "devices": [
-                {
-                    "nickname": "output_en1",
-                    "ph_name": "output_en",
-                    "extra_args": {"ch": 1}
-                },
-                {
-                    "nickname": "range1",
-                    "ph_name": "range",
-                    "extra_args": {"ch": 1}
-                }
+                {"nickname": "en",
+                    "ph_name": "output_en"},
+                {"nickname": "level",
+                    "ph_name": "ramp"},
+                {"ph_name": "range"},
+                {"ph_name": "volt"},
+                {"ph_name": "slope"}
             ]
         },
 
@@ -97,9 +103,7 @@
             "ph_class": "instruments.agilent_multi_34410A",
             "address": "USB0::0x2A8D::0x0101::MY57515472::0",
             "devices": [
-                {
-                    "ph_name": "readval"
-                }
+                {"ph_name": "readval"}
             ]
         },
             
@@ -114,6 +118,41 @@
             "devices": [
                 {"ph_name": "ramp_to_index"},
                 {"ph_name": "sequence", "type": {"set":false, "get":true}}
+            ]
+        }, 
+
+        { 
+            "name": "magnet_x",
+            "ph_class": "instruments.AmericanMagnetics_model430",
+            "address": "tcpip::192.168.137.216::7180::socket",
+            "devices": [
+                {"ph_name": "field_unit"},
+                {"ph_name": "ramp_rate_unit"},
+                {"ph_name": "ramp_rate_field_T"},
+                {"nickname": "field_x", "ph_name": "ramp_field_T"}
+            ]
+        },
+        {
+            "name": "magnet_y",
+            "ph_class": "instruments.AmericanMagnetics_model430",
+            "address": "tcpip::192.168.137.215::7180::socket",
+            "devices": [
+                {"ph_name": "field_unit"},
+                {"ph_name": "ramp_rate_unit"},
+                {"ph_name": "ramp_rate_field_T"},
+                {"nickname": "field_y", "ph_name": "ramp_field_T"}
+            ]
+        },
+
+        {
+            "name": "magnet_z",
+            "ph_class": "instruments.AmericanMagnetics_model430",
+            "address": "tcpip::192.168.137.214::7180::socket",
+            "devices": [
+                {"ph_name": "field_unit"},
+                {"ph_name": "ramp_rate_unit"},
+                {"ph_name": "ramp_rate_field_T"},
+                {"nickname": "field_z", "ph_name": "ramp_field_T"}
             ]
         }
     ]
