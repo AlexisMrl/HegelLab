@@ -126,7 +126,7 @@
      <x>0</x>
      <y>0</y>
      <width>813</width>
-     <height>20</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuImport">
@@ -205,7 +205,7 @@
      <normaloff>../resources/load.svg</normaloff>../resources/load.svg</iconset>
    </property>
    <property name="text">
-    <string>(re)load</string>
+    <string>(re)Load</string>
    </property>
    <property name="toolTip">
     <string>Load (reload) instrument</string>
@@ -235,7 +235,7 @@
      <normaloff>../resources/config.svg</normaloff>../resources/config.svg</iconset>
    </property>
    <property name="text">
-    <string>config</string>
+    <string>Edit devices</string>
    </property>
    <property name="toolTip">
     <string>Show instrument config window (if it exists)</string>

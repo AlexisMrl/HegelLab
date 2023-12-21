@@ -15,10 +15,10 @@ from PyQt5.QtGui import QFontDatabase
 import PyQt5.QtCore as QtCore
 from src.GuiInstrument import GuiInstrument, GuiDevice
 from pyHegel.gui.ScientificSpinBox import PyScientificSpinBox
-from widgets.WindowWidget import AltDragWindow
+from widgets.WindowWidget import Window
 
 
-class RackWindow(AltDragWindow):
+class RackWindow(Window):
     def __init__(self, lab):
         super().__init__()
         uic.loadUi("ui/RackWindow.ui", self)
@@ -36,10 +36,10 @@ class RackWindow(AltDragWindow):
         self.tree.setIconSize(QtCore.QSize(13, 13))
         self.hbox_device.setEnabled(False)
 
-        self.win_add = AltDragWindow()
-        self.win_set = AltDragWindow()
-        self.win_devconfig = AltDragWindow()
-        self.win_rename = AltDragWindow()
+        self.win_add = Window()
+        self.win_set = Window()
+        self.win_devconfig = Window()
+        self.win_rename = Window()
 
         # -- Connect signals to slots --
         self.actionAdd.triggered.connect(self.onAddInstrument)
@@ -56,7 +56,7 @@ class RackWindow(AltDragWindow):
         self.importFromJSON.triggered.connect(self.lab.importFromJSON)
         self.exportToPyHegel.triggered.connect(self.lab.exportToPyHegel)
         self.exportToJSON.triggered.connect(self.lab.exportToJSON)
-
+    
     def onSelectionChanged(self):
         selected_item = self.tree.selectedItem()
         if selected_item is None:
@@ -194,11 +194,15 @@ class RackWindow(AltDragWindow):
     
     def onActionLoad(self):
         selected_item = self.tree.selectedItem()
-        self.lab.loadGuiInstrument(self.tree.getData(selected_item))
+        data = self.tree.getData(selected_item)
+        if not isinstance(data, GuiInstrument): return
+        self.lab.loadGuiInstrument(data)
 
     def onActionConfig(self):
         selected_item = self.tree.selectedItem()
-        self.lab.showConfig(self.tree.getData(selected_item))
+        data = self.tree.getData(selected_item)
+        if not isinstance(data, GuiInstrument): return
+        self.lab.showConfig(data)
 
     def onRemoveInstrument(self):
         # get parent selected item:
@@ -219,6 +223,39 @@ class RackWindow(AltDragWindow):
         self.win_rename.close()
         self.win_devconfig.close()
         event.accept()
+    
+    # -- for shortcuts
+    def initShortcuts(self):
+        super().initShortcuts()
+        self.short("Shift+a", self.actionAdd.trigger)
+        self.short("Shift+l", self.actionLoad.trigger)
+        self.short("Shift+e", self.actionConfig.trigger)
+        self.short("y", self.short_yankGuiDev)
+        # device
+        self.short("Space", self.pb_get.click)
+        self.short("Shift+Space", self.pb_set.click)
+        self.short("m", self.short_monitorGuiDev)
+    
+    def focusTree(self):
+        self.lab.showRack()
+        self.tree.setFocus(True)
+
+    def short_yankGuiDev(self):
+        selected_item = self.tree.selectedItem()
+        if selected_item == None: return
+        gui_dev = self.tree.getData(selected_item)
+        if not isinstance(gui_dev, GuiDevice): return
+        Window.gui_dev_buffer = gui_dev
+    
+    def short_monitorGuiDev(self):
+        selected_item = self.tree.selectedItem()
+        if selected_item == None: return
+        gui_dev = self.tree.getData(selected_item)
+        if not isinstance(gui_dev, GuiDevice): return
+        if self.lab.view_monitor.isMonitored(gui_dev):
+            self.lab.view_monitor.removeGuiDev(gui_dev)
+        else:
+            self.lab.view_monitor.addGuiDev(gui_dev)
 
     # -- functions that creates windows --
     # window add device
@@ -387,6 +424,7 @@ class RackWindow(AltDragWindow):
         item.setText(3, gui_instr.ph_class.split('.')[-1])
         item.setFont(3, self.fixed_font)
         self.tree.addTopLevelItem(item)
+        self.tree.setCurrentItem(item)
         self.gui_fillGuiInstrument(gui_instr)
 
     def gui_removeGuiInstrument(self, gui_instr):

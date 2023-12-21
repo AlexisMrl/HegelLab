@@ -1,53 +1,56 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow, QShortcut
 from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtGui import QKeyEvent
+from PyQt5.QtGui import QKeyEvent, QKeySequence
+
+from src.GuiInstrument import GuiDevice
 
 
-class AltDragWindow(QMainWindow):
+class Window(QMainWindow):
     
     # class variable
     lab = None
+    windows = []
+    gui_dev_buffer = None
 
     def __init__(self):
         super().__init__()
+        Window.windows.append(self)
+        if Window.lab is not None:
+            self.initShortcuts()
 
-        self.installEventFilter(self)
-        
+    @staticmethod
+    def killAll():
+        for win in Window.windows:
+            win.close()
+        Window.windows.clear()
+        Window.lab = None
+        Window.gui_dev_buffer = None
 
-    def eventFilter(self, obj, event):
-        
-        # alt+drag
-        if event.type() == QEvent.MouseButtonPress:
-            if event.button() == Qt.LeftButton:
-                modifiers = QApplication.keyboardModifiers()
-                if modifiers == Qt.AltModifier:
-                    # Alt+LeftClick detected
-                    self.drag_start_position = event.globalPos() - self.pos()
-                    event.accept()
-                    return True
-            elif event.button() == Qt.MiddleButton:
-                # MiddleClick detected
-                self.close()
-                event.accept()
-                return True
-        elif event.type() == QEvent.MouseMove and hasattr(self, 'drag_start_position'):
-            self.move(event.globalPos() - self.drag_start_position)
-            event.accept()
-            return True
-        elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
-            if hasattr(self, 'drag_start_position'):
-                delattr(self, 'drag_start_position')
-                event.accept()
-                return True
-        
-        # hjkl
-        elif event.type() == QEvent.KeyPress:
-            key_event = QKeyEvent(event)
-            print(key_event.key())
-            # arrow:
-            if key_event.key() == Qt.Key_Left:
-                print("left")
-            elif key_event.key() == Qt.Key_Down:
-                print("down")
+    @staticmethod
+    def initShortcutsAll():
+        [win.initShortcuts() for win in Window.windows]
 
-        return super().eventFilter(obj, event)
+    
+    def initShortcuts(self):
+        lab = Window.lab
+
+        self.short("w, q", self.close)
+        self.short("w, i", lab.showRack)
+        self.short("w, d", lab.showDisplay)
+        self.short("w, m", lab.showMonitor)
+        self.short("w, s", lab.showMain)
+
+        self.short("t, s", lab.view_main.focusTreeSw)
+        self.short("t, o", lab.view_main.focusTreeOut)
+        self.short("t, l", lab.view_main.focusTreeLog)
+        self.short("t, i", lab.view_rack.focusTree)
+        self.short("t, m", lab.view_monitor.focusTree)
+
+    def short(self, key, slot):
+        # create shortcut
+        shortcut = QShortcut(QKeySequence(key), self)
+        shortcut.activated.connect(slot)
+    
+    def yankGuiDev(self, gui_dev):
+        if isinstance(gui_dev, GuiDevice):
+            self.gui_dev_buffer = gui_dev

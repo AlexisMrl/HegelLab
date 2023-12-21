@@ -22,8 +22,8 @@ import os
 
 class HegelLab:
     def __init__(self, app):
+
         self.app = app
-        WindowWidget.AltDragWindow.lab = self
 
         self.loader = LoaderSaver.LoaderSaver(self)
         self.pop = Popup.Popup()
@@ -33,6 +33,12 @@ class HegelLab:
         self.view_rack = RackWindow.RackWindow(self)
         self.view_display = DisplayWindow.DisplayWindow(self)
         self.view_monitor = MonitorWindow.MonitorWindow(self)
+
+        # shortcut:
+        WindowWidget.Window.lab = self
+        WindowWidget.Window.initShortcutsAll()
+
+        
 
         # data
         self.instr_list = self.loader.importFromJSON('default_instruments.json')
@@ -50,32 +56,34 @@ class HegelLab:
     # -- GENERAL --
 
     def showMain(self):
-        self.view_main.show()
+        self.view_main.setFocus(True)
+        self.view_main.activateWindow()
         self.view_main.raise_()
+        self.view_main.show()
 
     def showRack(self):
-        self.view_rack.show()
+        self.view_rack.setFocus(True)
+        self.view_rack.activateWindow()
         self.view_rack.raise_()
+        self.view_rack.show()
 
     def showDisplay(self, dual=None):
-        self.view_display.show_(dual)
+        self.view_display.setFocus(True)
+        self.view_display.activateWindow()
         self.view_display.raise_()
+        self.view_display.show_(dual)
     
     def showMonitor(self):
-        self.view_monitor.show()
+        self.view_monitor.setFocus(True)
+        self.view_monitor.activateWindow()
         self.view_monitor.raise_()
+        self.view_monitor.show()
 
     def askClose(self, event):
         if self.pop.askQuit():
             self.sweep_thread.terminate()
-            self.view_main.close()
-            self.view_rack.close()
-            self.view_display.close()
-            self.view_monitor.close()
             #self.model.close()
-            self.loader.close()
-            if self.app is not None:
-                self.app.closeAllWindows()
+            WindowWidget.Window.killAll()
         else:
             event.ignore()
     

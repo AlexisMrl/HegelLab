@@ -9,9 +9,9 @@ from PyQt5.QtGui import qRgb, QImage, QPixmap, QIcon
 from PyQt5.QtCore import Qt
 import pyqtgraph as pg
 
-from widgets.WindowWidget import AltDragWindow
+from widgets.WindowWidget import Window
 
-class DisplayWindow(AltDragWindow):
+class DisplayWindow(Window):
     def __init__(self, lab):
         super().__init__()
         self.setWindowTitle("Live display")

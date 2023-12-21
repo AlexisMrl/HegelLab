@@ -3,16 +3,12 @@ from collections import OrderedDict
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QTextEdit, QPushButton, QApplication
 from PyQt5.QtWidgets import QVBoxLayout, QWidget
 from PyQt5.QtGui import QFont, QIcon
-from widgets.WindowWidget import AltDragWindow
+from widgets.WindowWidget import Window
 
 class LoaderSaver:
     def __init__(self, lab):
         self.lab = lab
         self.win_ph_script = None
-    
-    def close(self):
-        if self.win_ph_script is not None:
-            self.win_ph_script.close()
         
     def importFromJSON(self, path=None):
         # open a file dialog to select a json file
@@ -47,7 +43,7 @@ class LoaderSaver:
     def exportToPyHegel(self, gui_instruments):
         # export rack to pyHegel loading code
         # simple window wit a textedit and a button in a vbox to copy to clipboard
-        self.win_ph_script = AltDragWindow()
+        self.win_ph_script = Window()
         win = self.win_ph_script
         win.setWindowIcon(QIcon("resources/favicon/favicon.png"))
         win.setWindowTitle("Export to pyHegel")

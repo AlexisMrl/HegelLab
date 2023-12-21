@@ -9,10 +9,10 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5 import QtGui, uic
 from PyQt5.QtCore import Qt
-from widgets.WindowWidget import AltDragWindow
+from widgets.WindowWidget import Window
 
 
-class MainWindow(AltDragWindow):
+class MainWindow(Window):
     def __init__(self, lab):
         super().__init__()
         # -- ui setup --
@@ -70,18 +70,12 @@ class MainWindow(AltDragWindow):
 
         # -- end ui setup --
         self.lab = lab
-        self.tree_sw.dropMimeData = lambda parent, row, data, action: self.onDrop(
-            self.tree_sw, parent, row, data, action
-        )
-        self.tree_out.dropMimeData = lambda parent, row, data, action: self.onDrop(
-            self.tree_out, parent, row, data, action
-        )
-        self.tree_log.dropMimeData = lambda parent, row, data, action: self.onDrop(
-            self.tree_log, parent, row, data, action
-        )
+        self.tree_sw.itemDropped.connect(self.treeOnDrop)
+        self.tree_out.itemDropped.connect(self.treeOnDrop)
+        self.tree_log.itemDropped.connect(self.treeOnDrop)
 
         # -- windows --
-        self.win_sw_setup = AltDragWindow()
+        self.win_sw_setup = Window()
 
         # -- Connect signals to slots --
         self.actionInstruments.triggered.connect(self.lab.showRack)
@@ -101,17 +95,16 @@ class MainWindow(AltDragWindow):
         self.pause_button.clicked.connect(self.lab.pauseSweep)
         self.abort_button.clicked.connect(self.lab.abortSweep)
 
-    def onDrop(self, tree, parent, row, data, action):
+    def treeOnDrop(self, tree, row, data):
         # what happens when the item is dropped
         # extract data:
         instr_nickname = str(data.data("instrument-nickname"), "utf-8")
         dev_nickname = str(data.data("device-nickname"), "utf-8")
         gui_dev = self.lab.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
 
-        add_fn = {self.tree_sw: self.lab.addSweepDev,
-                  self.tree_out: self.lab.addOutputDev,
-                  self.tree_log: self.lab.addLogDev}
-
+        self.addDev(tree, gui_dev, row)
+    
+    def addDev(self, tree, gui_dev, row):
         item = tree.findItemByData(gui_dev)
 
         if tree == self.tree_sw:
@@ -137,7 +130,7 @@ class MainWindow(AltDragWindow):
                 self.lab.addLogDev(gui_dev, row)
             else:
                 # item is already in the tree, bypass lab, just reorder
-                self.gui_addOutItem(gui_dev, row)
+                self.gui_addLogItem(gui_dev, row)
                 old_row = tree.indexFromItem(item).row()
                 tree.takeTopLevelItem(old_row)
         return True
@@ -167,6 +160,43 @@ class MainWindow(AltDragWindow):
 
     def closeEvent(self, event):
         self.lab.askClose(event)
+
+    # -- for shortcuts
+    def initShortcuts(self):
+        super().initShortcuts()
+        self.short("p", self.short_paste)
+        self.short("x", self.short_remove)
+    
+    def focusTreeSw(self):
+        self.lab.showMain()
+        self.tree_sw.setFocus(True)
+    def focusTreeOut(self):
+        self.lab.showMain()
+        self.tree_out.setFocus(True)
+    def focusTreeLog(self):
+        self.lab.showMain()
+        self.tree_log.setFocus(True)
+
+    def short_paste(self):
+        gui_dev = Window.gui_dev_buffer
+        if not gui_dev: return
+        focused = self.focusWidget()
+        if focused == self.tree_sw:
+            self.addDev(self.tree_sw, gui_dev, 0)
+        elif focused == self.tree_out:
+            self.addDev(self.tree_out, gui_dev, 0)
+        elif focused == self.tree_log:
+            self.addDev(self.tree_log, gui_dev, 0)
+    
+    def short_remove(self):
+        focused = self.focusWidget()
+        if focused == self.tree_sw:
+            self.tree_sw.removeSelected()
+        if focused == self.tree_out:
+            self.tree_out.removeSelected()
+        if focused == self.tree_log:
+            self.tree_log.removeSelected()
+
 
     # -- gui -- (called by the lab)
     def _gui_makeItem(self, tree, gui_dev, row):
