@@ -31,13 +31,14 @@ class Model:
         self.lab = lab
 
     def getInstrumentList(self):
+        # NOT USED, NOT FINISHED
         # return a string list of instrument classes
         # the criteria for being an instrument is:
         #    - inheriting from BaseInstrument
         #    - not being BaseInstrument
         #    - not starting with '_'
         ret = []
-        blacklist = ['instrumen_base']
+        blacklist = ['instrument_base']
         for instr_str in dir(instruments):
             if instr_str.startswith("_"):
                 continue

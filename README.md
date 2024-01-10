@@ -7,11 +7,9 @@ My attempt at building an interface for pyHegel.
 This is highly inspired by Labber and VsdVg (the original interface on top of pyHegel).
 It is intended to be more structured than the original VsdVg, so adding feature should be easier.
 
-The objective is to make it as modular and versatile as possible.
-
-Main features (not much more than VsdVg, but cleaner and in py3):
-- load 'any' instrument from pyHegel
-- edit devices (scale, ramp, limit, rename),
+Main features:
+- load 'any' instrument from pyHegel,
+- edit devices (scale, ramp, limit),
 - save and load instruments and custom devices,
 - responsive live display,
 - live monitor.
@@ -21,7 +19,7 @@ Missing for now:
 - no support for multi output devices.
 
 
-Note: sweep and live view for higher than two swept devices is currently not supported.
+Note: live view for higher than two swept devices not supported.
 
 # Shortcuts
 
@@ -32,14 +30,13 @@ Note: sweep and live view for higher than two swept devices is currently not sup
 | l | unfold tree item  |
 | k | fold tree item  |
 | x | (in most places) remove item |
-
 | w, i | show rack (instrument) window  |
 | w, d | show display |
 | w, m | show monitor |
-| w, w | show main windows  |
+| w, w | show main window  |
 | t, o | focus out tree |
 | t, s | focus sweep tree |
-| t, l | focus log tree |
+| t, g | focus log tree |
 | w, q | close current window  |
 
 | Rack |   |

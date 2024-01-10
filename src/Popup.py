@@ -119,7 +119,7 @@ class Popup:
         return self._popYesNo("Not settable", "This device is detected as not settable. Try sweeping it anyway?")
 
     def notGettable(self):
-        return self._popYesNo("Not gettable", "This device is not gettable. Try as output device anyway?")
+        return self._popYesNo("Not gettable", "This device is not gettable. Try to add it anyway?")
 
     def askRemoveDevice(self, nickname):
         msg = f"Are you sure you want to remove the device '{nickname}' ?"
