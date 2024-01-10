@@ -38,14 +38,9 @@ class GuiInstrument:
             return gui_device
         return None
     
-    def removeGuiDevice(self, gui_dev):
-        self.gui_devices.remove(gui_dev)
-
     def toDict(self):
         # for json file saving
-        d = {
-            'ph_class': self.ph_class,
-        }
+        d = {'ph_class': self.ph_class}
         if self.nickname != self.ph_class.split(".")[-1]:
             d['nickname'] = self.nickname
         if self.driver != 'Drivers.Default':
@@ -89,7 +84,9 @@ class GuiDevice:
         self.ph_dev = None
         self.ph_choice = None  # ChoiceString from pyHegel
         self.sweep = [None, None, None]  # [start, stop, npts]
+        self.raz = False
         self.cache_value = None  # a variable to cache the last value read
+        self.status = {'sweep':False, 'out':False, 'log':False, 'monitor':False}
 
         # sweep
         # a np.array for when the device is in a sweep (swept or output)
@@ -178,7 +175,6 @@ class GuiDevice:
 
         scale_kw = self.logical_kwargs['scale']
         if scale_kw != {}:
-            scale_kw["scale_factor"] = scale_kw.pop("factor")
             scale_kw["only_val"] = True
             scale_kw["invert_trans"] = True
             scale_str = ", ".join([f"{k}={v}" for k, v in scale_kw.items()])

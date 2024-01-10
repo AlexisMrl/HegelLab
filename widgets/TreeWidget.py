@@ -7,10 +7,20 @@ from src.GuiInstrument import GuiInstrument, GuiDevice
 
 
 class TreeWidget(QTreeWidget):
+    lab = None
     def __init__(self, *args, **kwargs):
-        super(TreeWidget, self).__init__()
+        super().__init__()
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setDragDropMode(QAbstractItemView.DragDrop)
+        self.remove_btn = None
+    
+    def addTopLevelItem(self, item):
+        super().addTopLevelItem(item)
+        self.setCurrentItem(item)
+    
+    def insertTopLevelItem(self, row, item):
+        super().insertTopLevelItem(row, item)
+        self.setCurrentItem(item)
 
     def __iter__(self):
         # make the tree iterable
@@ -27,25 +37,30 @@ class TreeWidget(QTreeWidget):
         if len(selected) == 0:
             return None
         return selected[0]
+    
+    def selectedData(self, column=0):
+        selected = self.selectedItem()
+        if not selected: return None
+        return self.getData(selected, column)
 
     @staticmethod
     def getData(item, column=0):
         # return the data of an item
         return item.data(column, QtCore.Qt.UserRole)
-
+    
     def setData(self, item, data, column=0):
         # set the data of an item
         item.setData(column, QtCore.Qt.UserRole, data)
 
-    def findItemByData(self, data):
+    def findItemByData(self, data, column=0):
         # find an item by its data, including subitems
         for i in range(self.topLevelItemCount()):
             item = self.topLevelItem(i)
-            if self.getData(item) == data:
+            if self.getData(item, column) == data:
                 return item
             for j in range(item.childCount()):
                 subitem = item.child(j)
-                if self.getData(subitem) == data:
+                if self.getData(subitem, column) == data:
                     return subitem
         return None
 
@@ -54,8 +69,8 @@ class TreeWidget(QTreeWidget):
         selected_index = self.indexOfTopLevelItem(self.selectedItem())
         self.takeTopLevelItem(selected_index)
 
-    def removeByData(self, data):
-        item = self.findItemByData(data)
+    def removeByData(self, data, column=0):
+        item = self.findItemByData(data, column)
         if item is None:
             return
         item_index = self.indexOfTopLevelItem(item)
@@ -81,12 +96,16 @@ class TreeWidget(QTreeWidget):
             mime_data.setData("device-nickname", b_name)
         return mime_data
 
-    itemDropped = QtCore.pyqtSignal(object, int, QtCore.QMimeData)
+    guiDeviceDropped = QtCore.pyqtSignal(object, int)
     def dropMimeData(self, parent, row, data, action):
         # emit signal when something is drop
-        self.itemDropped.emit(self, row, data)
+        instr_nickname = str(data.data("instrument-nickname"), "utf-8")
+        dev_nickname = str(data.data("device-nickname"), "utf-8")
+        gui_dev = self.lab.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
+        self.guiDeviceDropped.emit(gui_dev, row)
         return True
-    
+
+
     def keyPressEvent(self, event):
         # vim jkhl, d(own), u(p), g, G
         key = event.key()
@@ -111,7 +130,7 @@ class TreeWidget(QTreeWidget):
                 pressKey(Qt.Key_End)
             elif event.modifiers() == Qt.NoModifier:
                 pressKey(Qt.Key_Home)
-
-        
+        elif key == Qt.Key_X and self.remove_btn:
+            self.remove_btn.click()
         else:
             super().keyPressEvent(event)

@@ -5,9 +5,8 @@ class IdxIter:
 
     # this is not an iterator btw, it just counts
 
-    def __init__(
-        self, nb_cols, nb_rows, reverse_cols=False, reverse_rows=False, alternate=False
-    ):
+    def __init__(self, nb_cols, nb_rows, reverse_cols=False, reverse_rows=False, alternate=False):
+        # reverse_xxx is True if sweep start > sweep stop
         self.nb_cols = nb_cols - 1
         self.nb_rows = nb_rows - 1
         self.reverse_cols = reverse_cols

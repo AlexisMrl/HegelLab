@@ -17,176 +17,192 @@ import numpy as np
 
 # one thread for each monitored device
 class MonitorThread(QThread):
-    
-    update_signal = pyqtSignal(GuiDevice)
 
-    def __init__(self, gui_dev, get_fn, interval):
+    def __init__(self, gui_dev, fn_get):
         super().__init__()
         self.gui_dev = gui_dev
-        self.get_fn = get_fn
-        self.interval = interval
+        self.fn_get = fn_get
+
+        from pyHegel.commands import get
+        self.get = get
+
+        self.interval = 1000 # in ms
+        self.data = np.full(100, np.nan, dtype=np.float64)
         self.pause = False
+
+        self.spinbox = None
+        self.curve = None
+
+    def setNbpts(self, new_value):
+        if new_value <= 0: return
+        if new_value > len(self.data):
+            # concatenate new-old,old
+            old_length = len(self.data)
+            extension = np.full(new_value - old_length, np.nan, dtype=np.float64)
+            self.data = np.concatenate([extension, self.data])
+            self.updateDisplay()
+        elif new_value < len(self.data):
+            self.data = self.data[-new_value:]
+            self.updateDisplay()
+        else: pass
+    
+    def start_(self):
+        self.pause = False
+        if not self.isRunning(): self.start()
     
     def run(self):
         while True:
             self.msleep(self.interval)
             if self.pause: continue
 
-            # because logical_dev is innacessible when ramping
-            # we get the value from the basedev
-            # and divide by scale if needed
-            dev = self.gui_dev.getPhDev(basedev=True)
-            if dev is None: continue
-            val = self.get_fn(dev)
-            if val is None: continue
-            if isinstance(val, (list, tuple)):
+            val = self.fn_get(self.gui_dev)
+            if isinstance(val, (tuple, list)):
                 val = val[0]
 
-            factor = self.gui_dev.logical_kwargs['scale'].get('factor', 1)
-            val = val / factor
-            self.gui_dev.monitor_data = np.roll(self.gui_dev.monitor_data, -1)
-            self.gui_dev.monitor_data[-1] = val
-            self.update_signal.emit(self.gui_dev)
+            self.data = np.roll(self.data, -1)
+            self.data[-1] = val
+            self.updateDisplay()
     
-
-class MonitorObj:
-    def __init__(self, lab, gui_dev, interval, dev_item):
-        self.lab = lab
-        self.gui_dev = gui_dev
-        self.dev_item = dev_item # item in tree
-        self.spinbox = ScientificSpinBox.PyScientificSpinBox(buttonSymbols=2, readOnly=True)
-        font = self.spinbox.font()
-        font.setPointSize(14); self.spinbox.setFont(font)
-        
-        gui_dev.monitor_data = np.full(200, np.nan, dtype=np.float64)
-        self.plot = PlotWidget.PlotWidget()
-        self.curve = self.plot.plot()
-        self.dock = Dock(name=gui_dev.getDisplayName("short"))
-        self.dock.addWidget(self.plot)
-
-        get_fn = self.lab.model.getValue
-        self.thread = MonitorThread(gui_dev, get_fn, interval)
-        self.thread.update_signal.connect(self.update)
-        self.thread.start()
-    
-    def update(self, gui_dev):
-        self.curve.setData(gui_dev.monitor_data)
-        self.spinbox.setValue(gui_dev.monitor_data[-1])
-        self.lab.view_rack.gui_updateDeviceValue(gui_dev, gui_dev.monitor_data[-1])
+    def updateDisplay(self):
+        try:
+            self.spinbox.setValue(float(self.data[-1]))
+            self.curve.setData(self.data)
+        except Exception as e:
+            # because it may have been deleted
+            return
 
 class MonitorWindow(Window):
     def __init__(self, lab):
         super().__init__()
         self.lab = lab
+        self.threads = {} # gui_dev:thread
 
+        # ui setup
         uic.loadUi("ui/MonitorWindow.ui", self)
         self.setWindowTitle("Monitor")
         self.setWindowIcon(QtGui.QIcon("resources/monitor.svg"))
-        
-        # ui setup
         self.dock_area = DockArea()
         self.splitter.addWidget(self.dock_area)
         self.splitter.setSizes([300, 500])
-        # tree:
-        self.btn_remove.clicked.connect(self.gui_removeSelectedDevice)
-        def onDrop(data):
-            instr_nickname = str(data.data("instrument-nickname"), "utf-8")
-            dev_nickname = str(data.data("device-nickname"), "utf-8")
-            gui_dev = self.lab.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
-            self.addGuiDev(gui_dev)
-            return True
-        self.tree.dropMimeData = lambda parent, row, data, action: onDrop(data)
-    
-        self.monitors_dict = {}  # gui_dev: monitor_obj
+        # end ui setup
 
-    def closeEvent(self, event):
-        for monitor_obj in self.monitors_dict.values():
-            monitor_obj.thread.pause = True
-        event.accept()
-    
-    def showEvent(self, event):
-        for monitor_obj in self.monitors_dict.values():
-            monitor_obj.thread.pause = False
-        event.accept()
+        #tree data columns: 0 gui_dev, 1 thread, 2 dock
 
-    def addGuiDev(self, gui_dev):
-        # create and add MonitorDock
-        if gui_dev in self.monitors_dict.keys():
-            return
-        dev_item = QTreeWidgetItem()
-        monitor_obj = MonitorObj(self.lab, gui_dev, 200, dev_item)
-        self.dock_area.addDock(monitor_obj.dock)
+        # signals:
+        self.btn_remove.clicked.connect(self.onRemoveClicked)
+        self.tree.guiDeviceDropped.connect(self.onDrop)
+    
+    
+    # -- SHORTCUTS
 
-        self.monitors_dict[gui_dev] = monitor_obj
-        
-        # create and add tree item
-        dev_item.setText(0, gui_dev.getDisplayName("short"))
-        self.tree.setData(dev_item, gui_dev, 0)
-        self.tree.setData(dev_item, monitor_obj, 1)
-        self.tree.addTopLevelItem(dev_item)
-        self.tree.setItemWidget(dev_item, 1, monitor_obj.spinbox)
-    
-    def removeGuiDev(self, gui_dev):
-        # properly delete monitor of gui_dev
-        monitor_obj = self.monitors_dict.get(gui_dev, None)
-        if monitor_obj is None: return
-        monitor_obj.thread.terminate()
-        monitor_obj.dock.close()
-        self.tree.removeByData(gui_dev)
-        self.monitors_dict.pop(monitor_obj.gui_dev)
-    
-    def isMonitored(self, gui_dev):
-        return bool(self.monitors_dict.get(gui_dev, None))
-        
-
-    def gui_updateDeviceValue(self, gui_dev, value):
-        # update the value of a device in the tree
-        monitor_obj = self.monitors_dict.get(gui_dev, None)
-        if monitor_obj is None: return
-        spinbox = monitor_obj.spinbox
-        if not isinstance(value, (float, int)):
-            spinbox.setSpecialValueText(str(value))
-            spinbox.setValue(spinbox.minimum())
-        else:
-            spinbox.setValue(gui_dev.cache_value)
-    
-    def gui_renameDevice(self, gui_dev):
-        # rename a device in the tree
-        new_nickname = gui_dev.getDisplayName("short")
-        monitor_obj = self.monitors_dict.get(gui_dev)
-        if monitor_obj is None: return
-        monitor_obj.dock.setTitle(new_nickname)
-        dev_item = self.tree.findItemByData(monitor_obj)
-        dev_item.setText(0, gui_dev.getDisplayName("short"))
-    
-    def gui_removeSelectedDevice(self):
-        item = self.tree.selectedItem()
-        if not item: return
-        gui_dev = self.tree.getData(item, 0)
-        self.gui_removeDevice(gui_dev)
-    
-    def gui_removeDevice(self, gui_dev):
-        self.removeGuiDev(gui_dev)
-
-
-    # -- shortcuts
     def initShortcuts(self):
         super().initShortcuts()
-        self.short("x", self.gui_removeSelectedDevice)
-        self.short("y", self.short_yankGuiDev)
-        self.short("p", self.short_pasteGuiDev)
-    
-    def short_yankGuiDev(self):
-        item = self.tree.selectedItem()
-        if not item: return
-        gui_dev = self.tree.getData(item, 0)
-        Window.gui_dev_buffer = gui_dev
-    
-    def short_pasteGuiDev(self):
-        gui_dev = Window.gui_dev_buffer
-        if not gui_dev: return
-        self.addGuiDev(gui_dev)
+        self.short("x", self.btn_remove.click)
+        # Ctrl+a +,  Ctrl+x - interval, 
+        self.short("Ctrl+x", lambda: self._setIntervalForSelected('decr'))
+        self.short("-", lambda: self._setIntervalForSelected('decr'))
+        self.short("Ctrl+a", lambda: self._setIntervalForSelected('incr'))
+        self.short("+", lambda: self._setIntervalForSelected('incr'))
+        # left/right nbpts
+        self.short("Left", lambda: self._setNbptsForSelected('decr'))
+        self.short("h", lambda: self._setNbptsForSelected('decr'))
+        self.short("Right", lambda: self._setNbptsForSelected('incr'))
+        self.short("l", lambda: self._setNbptsForSelected('incr'))
 
-    def focusTree(self):
-        self.lab.showMonitor()
+    def closeEvent(self, event):
+        #self.pauseAll()
+        event.accept()
+    
+    def focus(self):
+        super().focus()
         self.tree.setFocus(True)
+
+    # -- core --
+    def _isMonitored(self, gui_dev):
+        return self.tree.findItemByData(gui_dev)
+    
+    def _setPauseAll(self, boo):
+        for item in self.tree:
+            self.tree.getData(item, 1).setPause(boo)
+    
+    def onDrop(self, gui_dev, _):
+        if not self.tree.findItemByData(gui_dev):
+            self.lab.setMonitorDevice(gui_dev, True)
+    
+    def onRemoveClicked(self):
+        gui_dev = self.tree.selectedData()
+        if isinstance(gui_dev, GuiDevice):
+            self.lab.setMonitorDevice(gui_dev, False)
+
+    def _makeOrUpdateDeviceItem(self, gui_dev):
+        thread = self.threads.get(gui_dev, None)
+        item_dev = self.tree.findItemByData(gui_dev)
+        if not item_dev:
+            def makeSpinbox():
+                spin = ScientificSpinBox.PyScientificSpinBox(buttonSymbols=2, readOnly=True)
+                font = spin.font()
+                font.setPointSize(14)
+                spin.setFont(font)
+                return spin
+            
+            def makeCurve():
+                plot = PlotWidget.PlotWidget()
+                plot.getPlotItem().showGrid(True, True)   
+                plot.enableAutoRange(axis='xy')
+                plot.setAutoVisible(x=True, y=True)
+                curve = plot.plot()
+
+                dock = Dock(name=gui_dev.getDisplayName("short", with_instr=True))
+                dock.addWidget(plot)
+                self.dock_area.addDock(dock)
+                return dock, curve
+
+            item_dev = QTreeWidgetItem()
+            spinbox = makeSpinbox()
+            dock, curve = makeCurve()
+            thread = MonitorThread(gui_dev, self.lab.getValue) if not thread else thread
+            thread.spinbox, thread.curve, = spinbox, curve
+            self.threads[gui_dev] = thread
+            thread.start_()
+
+            self.tree.addTopLevelItem(item_dev)
+            self.tree.setItemWidget(item_dev, 1, spinbox)
+            self.tree.setData(item_dev, gui_dev, 0)
+            self.tree.setData(item_dev, dock, 1)
+
+        item_dev.setText(0, gui_dev.getDisplayName("short", with_instr=True))
+
+    def _setIntervalForSelected(self, direction='', amount=100):
+        # amount in ms
+        gui_dev = self.tree.selectedData()
+        thread = self.threads.get(gui_dev, None)
+        if isinstance(gui_dev, GuiDevice) and direction in ('decr', 'incr') and thread:
+            thread.interval = int(max(100, thread.interval + amount * (-1 if direction == 'decr' else 1)))
+    
+    def _setNbptsForSelected(self, direction='', amount=50):
+        gui_dev = self.tree.selectedData()
+        thread = self.threads.get(gui_dev, None)
+        if isinstance(gui_dev, GuiDevice) and direction in ('decr', 'incr') and thread:
+            thread.setNbpts(int(max(100, len(thread.data) + amount * (-1 if direction == 'decr' else 1))))
+
+
+
+
+    def gui_updateMonitorDevice(self, gui_dev, boo):
+        if not boo: self.gui_onDeviceRemoved(gui_dev)
+        else:
+            self._makeOrUpdateDeviceItem(gui_dev)
+    
+    def gui_onDeviceRemoved(self, gui_dev):
+        item_dev = self.tree.findItemByData(gui_dev)
+        if not item_dev: return
+
+        thread = self.threads.get(gui_dev)
+        dock = self.tree.getData(item_dev, 1)
+        dock.close()
+        thread.pause = True
+        self.tree.removeByData(gui_dev)
+    
+    def gui_onDeviceRenamed(self, gui_dev):
+        if self.tree.findItemByData(gui_dev):
+            self._makeOrUpdateDeviceItem(gui_dev)

@@ -10,6 +10,8 @@ from PyQt5.QtWidgets import (
 from PyQt5 import QtGui, uic
 from PyQt5.QtCore import Qt
 from widgets.WindowWidget import Window
+from PyQt5.QtCore import pyqtSignal
+from src.GuiInstrument import GuiDevice, GuiInstrument
 
 
 class MainWindow(Window):
@@ -29,14 +31,12 @@ class MainWindow(Window):
         self.filename_edit.setPlaceholderText("filename")
         self.filename_edit.setFixedWidth(200)
         self.toolBar.addWidget(self.filename_edit)
-        # add disabled stop, abort buttons:
-        self.pause_button = QPushButton("Pause")
-        self.pause_button.setEnabled(False)
+        # add stop and abort buttons:
+        self.pause_button = QPushButton("Pause", enabled=False)
+        self.abort_button = QPushButton("Abort", enabled=False)
         self.toolBar.addWidget(self.pause_button)
-        self.abort_button = QPushButton("Abort")
-        self.abort_button.setEnabled(False)
         self.toolBar.addWidget(self.abort_button)
-        # display buttons
+        # display action buttons
         menu_display = QMenu()
         simple_icon = QtGui.QIcon("resources/display1.svg")
         dual_icon = QtGui.QIcon("resources/display1.svg")
@@ -49,9 +49,8 @@ class MainWindow(Window):
         menu_display.addAction(self.one_display_action)
         menu_display.addAction(self.two_display_action)
         self.btn_display.setMenu(menu_display)
-        # could not find a better way to insert before the separator
-        self.toolBar.insertAction(self.toolBar.actions()[1], self.btn_display)
-        # add label for sweep status to status bar
+        self.toolBar.insertAction(self.toolBar.actions()[1], self.btn_display) # insert before the separator
+        # StatusBar: add label for sweep status
         self.statusBar().addWidget(QLabel("Sweep status: "))
         self.sweep_status = QLabel("Ready")
         self.statusBar().addWidget(self.sweep_status)
@@ -59,114 +58,51 @@ class MainWindow(Window):
         self.statusBar().addWidget(self.sweep_iteration)
         self.sweep_estimation = QLabel()
         self.statusBar().addWidget(self.sweep_estimation)
-        # console button
-        self.btn_console = QAction(QtGui.QIcon("resources/console.svg"), "Console")
-        self.btn_console.triggered.connect(lambda: lab.showConsole())
-        #self.toolBar.insertAction(self.toolBar.actions()[0], self.btn_console)
         # width for first column for tree:
         self.tree_sw.setColumnWidth(0, 340)
         # before_wait:
         self.sb_before_wait.setMinimum(0)
-
         # -- end ui setup --
-        self.lab = lab
-        self.tree_sw.itemDropped.connect(self.treeOnDrop)
-        self.tree_out.itemDropped.connect(self.treeOnDrop)
-        self.tree_log.itemDropped.connect(self.treeOnDrop)
 
-        # -- windows --
-        self.win_sw_setup = Window()
+        self.lab = lab
+        self.win_swsetup = Window()
+
+        self.tree_sw.remove_btn = self.sw_remove
+        self.tree_out.remove_btn = self.out_remove
+        self.tree_log.remove_btn = self.log_remove
 
         # -- Connect signals to slots --
         self.actionInstruments.triggered.connect(self.lab.showRack)
         self.actionDisplay.triggered.connect(self.lab.showDisplay)
         self.actionMonitor.triggered.connect(self.lab.showMonitor)
-        # trees:
-        self.tree_sw.itemSelectionChanged.connect(self.onSweepSelectionChanged)
-        self.tree_out.itemSelectionChanged.connect(self.onOutSelectionChanged)
-        self.tree_log.itemSelectionChanged.connect(self.onLogSelectionChanged)
-        self.sw_remove.clicked.connect(self.tree_sw.removeSelected)
-        self.out_remove.clicked.connect(self.tree_out.removeSelected)
-        self.log_remove.clicked.connect(self.tree_log.removeSelected)
-        self.tree_sw.itemDoubleClicked.connect(self.triggerShowSweepConfig)
+
+        self.tree_sw.guiDeviceDropped.connect(self.onDropSweepDev)
+        self.tree_out.guiDeviceDropped.connect(self.onDropOutDev)
+        self.tree_log.guiDeviceDropped.connect(self.onDropLogDev)
+        self.tree_sw.itemDoubleClicked.connect(lambda item: self.lab.setSweepDevice(self.tree_sw.getData(item), True))
+
+        self.sw_remove.clicked.connect(lambda: self.onRemoveClicked(self.tree_sw))
+        self.out_remove.clicked.connect(lambda: self.onRemoveClicked(self.tree_out))
+        self.log_remove.clicked.connect(lambda: self.onRemoveClicked(self.tree_log))
+
+        self.tree_sw.itemSelectionChanged.connect(lambda: self.onSelectionChanged(self.tree_sw))
+        self.tree_out.itemSelectionChanged.connect(lambda: self.onSelectionChanged(self.tree_out))
+        self.tree_log.itemSelectionChanged.connect(lambda: self.onSelectionChanged(self.tree_log))
 
         # sweep:
-        self.actionStartSweep.triggered.connect(self.triggerStartSweep)
+        self.actionStartSweep.triggered.connect(self.onTriggerStartSweep)
         self.pause_button.clicked.connect(self.lab.pauseSweep)
         self.abort_button.clicked.connect(self.lab.abortSweep)
 
-    def treeOnDrop(self, tree, row, data):
-        # what happens when the item is dropped
-        # extract data:
-        instr_nickname = str(data.data("instrument-nickname"), "utf-8")
-        dev_nickname = str(data.data("device-nickname"), "utf-8")
-        gui_dev = self.lab.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
-
-        self.addDev(tree, gui_dev, row)
-    
-    def addDev(self, tree, gui_dev, row):
-        item = tree.findItemByData(gui_dev)
-
-        if tree == self.tree_sw:
-            if not item:
-                self.lab.addSweepDev(gui_dev, row)
-            else:
-                # item is already in the tree, bypass lab, just reorder
-                self.gui_addSweepGuiDev(gui_dev, row)
-                old_row = tree.indexFromItem(item).row()
-                tree.takeTopLevelItem(old_row)
-                self.gui_updateSweepValues(gui_dev)
-
-        elif tree == self.tree_out:
-            if not item:
-                self.lab.addOutputDev(gui_dev, row)
-            else:
-                # item is already in the tree, bypass lab, just reorder
-                self.gui_addOutItem(gui_dev, row)
-                old_row = tree.indexFromItem(item).row()
-                tree.takeTopLevelItem(old_row)
-        elif tree == self.tree_log:
-            if not item:
-                self.lab.addLogDev(gui_dev, row)
-            else:
-                # item is already in the tree, bypass lab, just reorder
-                self.gui_addLogItem(gui_dev, row)
-                old_row = tree.indexFromItem(item).row()
-                tree.takeTopLevelItem(old_row)
-        return True
-
-    def onSweepSelectionChanged(self):
-        selected = self.tree_sw.selectedItem()
-        self.sw_remove.setEnabled(selected is not None)
-
-    def onOutSelectionChanged(self):
-        selected = self.tree_out.selectedItem()
-        self.out_remove.setEnabled(selected is not None)
-
-    def onLogSelectionChanged(self):
-        selected = self.tree_log.selectedItem()
-        self.log_remove.setEnabled(selected is not None)
-
-    def triggerShowSweepConfig(self, item, _):
-        # ask the lab to show the sweep config window for the selected device
-        selected = self.tree_sw.selectedItem()
-        gui_dev = self.tree_sw.getData(selected)
-        self.lab.showSweepConfig(gui_dev)
-
-    def triggerStartSweep(self):
-        # ask the lab to start the sweep
-        self.gui_sweepStarting
-        self.lab.startSweep()
+    def initShortcuts(self):
+        super().initShortcuts()
 
     def closeEvent(self, event):
         self.lab.askClose(event)
-
-    # -- for shortcuts
-    def initShortcuts(self):
-        super().initShortcuts()
-        self.short("p", self.short_paste)
-        self.short("x", self.short_remove)
     
+
+    # -- TREE RELATED --
+
     def focusTreeSw(self):
         self.lab.showMain()
         self.tree_sw.setFocus(True)
@@ -177,130 +113,96 @@ class MainWindow(Window):
         self.lab.showMain()
         self.tree_log.setFocus(True)
 
-    def short_paste(self):
-        gui_dev = Window.gui_dev_buffer
-        if not gui_dev: return
-        focused = self.focusWidget()
-        if focused == self.tree_sw:
-            self.addDev(self.tree_sw, gui_dev, 0)
-        elif focused == self.tree_out:
-            self.addDev(self.tree_out, gui_dev, 0)
-        elif focused == self.tree_log:
-            self.addDev(self.tree_log, gui_dev, 0)
+    def _reorder(self, tree, gui_dev, new_row):
+        # we always add to last row (new_row is threrefore not used)
+        old_item = tree.findItemByData(gui_dev)
+        self._makeOrUpdateItem(tree, gui_dev, force_add=True)
+        old_item_row = tree.indexFromItem(old_item).row()
+        tree.takeTopLevelItem(old_item_row)
+
+    def onDropSweepDev(self, gui_dev, row):
+        if not self.tree_sw.findItemByData(gui_dev):
+            self.lab.setSweepDevice(gui_dev, True)
+        else: self._reorder(self.tree_sw, gui_dev, row)
+    def onDropOutDev(self, gui_dev, row):
+        if not self.tree_out.findItemByData(gui_dev):
+            self.lab.setOutDevice(gui_dev, True)
+        else: self._reorder(self.tree_out, gui_dev, row)
+    def onDropLogDev(self, gui_dev, row):
+        if not self.tree_log.findItemByData(gui_dev):
+            self.lab.setLogDevice(gui_dev, True)
+        else: self._reorder(self.tree_log, gui_dev, row)
+
+    def onRemoveClicked(self, tree):
+        if (gui_dev := tree.selectedData()):
+            set_fn = {self.tree_sw:self.lab.setSweepDevice,
+                      self.tree_out:self.lab.setOutDevice,
+                      self.tree_log:self.lab.setLogDevice}[tree]
+            set_fn(gui_dev, False)
     
-    def short_remove(self):
-        focused = self.focusWidget()
-        if focused == self.tree_sw:
-            self.tree_sw.removeSelected()
-        if focused == self.tree_out:
-            self.tree_out.removeSelected()
-        if focused == self.tree_log:
-            self.tree_log.removeSelected()
+    def onSelectionChanged(self, tree):
+        tree.remove_btn.setEnabled(tree.selectedItem() is not None)
 
+    def _makeOrUpdateItem(self, tree, gui_dev, force_add=False):
+        if force_add or not (dev_item := tree.findItemByData(gui_dev)):
+            row = tree.topLevelItemCount() # we always add to last row
+            dev_item= QTreeWidgetItem()
+            dev_item.setChildIndicatorPolicy(QTreeWidgetItem.DontShowIndicatorWhenChildless)
+            tree.setData(dev_item, gui_dev)
+            tree.insertTopLevelItem(row, dev_item)
+        # filling
+        dev_item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
+        if tree == self.tree_sw:
+            dev_item.setText(1, str(gui_dev.sweep[2]))
+            range_text = str(gui_dev.sweep[:2])
+            if gui_dev.raz: range_text += ', ret. to 0'
+            dev_item.setText(2, range_text)
+            #TODO: show steps
 
-    # -- gui -- (called by the lab)
-    def _gui_makeItem(self, tree, gui_dev, row):
-        item = QTreeWidgetItem()
-        item.setChildIndicatorPolicy(QTreeWidgetItem.DontShowIndicatorWhenChildless)
-        item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
-        tree.setData(item, gui_dev)
-        tree.insertTopLevelItem(row, item)
+    def gui_updateSweepDevice(self, gui_dev, boo):
+        if not boo: self.gui_onDeviceRemoved(gui_dev, self.tree_sw)
+        else: self._makeOrUpdateItem(self.tree_sw, gui_dev)
+    def gui_updateOutDevice(self, gui_dev, boo):
+        if not boo: self.gui_onDeviceRemoved(gui_dev, self.tree_out)
+        else: self._makeOrUpdateItem(self.tree_out, gui_dev)
+    def gui_updateLogDevice(self, gui_dev, boo):
+        if not boo: self.gui_onDeviceRemoved(gui_dev, self.tree_log)
+        else: self._makeOrUpdateItem(self.tree_log, gui_dev)
 
-    def gui_addSweepGuiDev(self, gui_dev, row):
-        # add item to the sweep tree at row:
-        self._gui_makeItem(self.tree_sw, gui_dev, row)
-
-    def gui_addOutItem(self, gui_dev, row):
-        # add item to the output tree:
-        self._gui_makeItem(self.tree_out, gui_dev, row)
-
-    def gui_addLogItem(self, gui_dev, row):
-        # add item to the log tree:
-        self._gui_makeItem(self.tree_log, gui_dev, row)
-
-    def gui_renameDevice(self, gui_dev):
-        item = self.tree_sw.findItemByData(gui_dev)
-        if item is not None:
-            item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
-        item = self.tree_out.findItemByData(gui_dev)
-        if item is not None:
-            item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
-        item = self.tree_log.findItemByData(gui_dev)
-        if item is not None:
-            item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
-
-    def gui_updateSweepValues(self, gui_dev):
-        # set sweep values to self.tree_sw.selectedItem()
-        dev_item = self.tree_sw.findItemByData(gui_dev)
-        dev_item.setText(1, str(gui_dev.sweep[2]))
-        dev_item.setText(2, str(gui_dev.sweep[:2]))
-
-    def gui_getSweepGuiDevs(self):
-        # go through self.tree_sw and return devs, start, stop, npts
-        return [self.tree_sw.getData(item) for item in self.tree_sw]
-
-    def gui_getOutputGuiDevs(self):
-        return [self.tree_out.getData(item) for item in self.tree_out]
-
-    def gui_getLogGuiDevs(self):
-        return [self.tree_log.getData(item) for item in self.tree_log]
+    def gui_onDeviceRemoved(self, gui_dev, tree=None):
+        # if no tree, remove from all
+        # if tree, remove from tree
+        if tree: tree.removeByData(gui_dev)
+        else:
+            [tree.removeByData(gui_dev) for tree in [self.tree_sw, self.tree_out, self.tree_log]]
     
-    def gui_sweepStarting(self):
-        self.sweep_status.setText("Starting")
+    def gui_onDeviceRenamed(self, gui_dev):
+        for tree in [self.tree_sw, self.tree_out, self.tree_log]:
+            if tree.findItemByData(gui_dev):
+                self._makeOrUpdateItem(tree, gui_dev)
 
-    def gui_sweepStarted(self):
-        self.pause_button.setEnabled(True)
-        self.abort_button.setEnabled(True)
-        self.actionStartSweep.setEnabled(False)
-        self.gb_sweep.setEnabled(False)
-        self.gb_out.setEnabled(False)
-        self.gb_log.setEnabled(False)
-        self.gb_param.setEnabled(False)
-        self.gb_comment.setEnabled(False)
-        self.filename_edit.setEnabled(False)
-        self.sweep_status.setText("Running")
 
-    def gui_sweepFinished(self):
-        self.pause_button.setEnabled(False)
-        self.abort_button.setEnabled(False)
-        self.actionStartSweep.setEnabled(True)
-        self.gb_sweep.setEnabled(True)
-        self.gb_out.setEnabled(True)
-        self.gb_log.setEnabled(True)
-        self.gb_param.setEnabled(True)
-        self.gb_comment.setEnabled(True)
-        self.filename_edit.setEnabled(True)
-        # Reset pause button (in case of Pause->Abort):
-        if self.pause_button.text() == "Resume":
-            self.gui_sweepResumed()
-        self.sweep_status.setText("Ready")
-        self.sweep_iteration.setText("")
-        self.sweep_estimation.setText("")
+    # -- SWEEP RELATED --
 
-    def gui_sweepPaused(self):
-        self.pause_button.setText("Resume")
-        self.pause_button.clicked.disconnect()
-        self.pause_button.clicked.connect(self.lab.resumeSweep)
-        self.sweep_status.setText("Paused")
+    def onTriggerStartSweep(self):
+        if not self.actionStartSweep.isEnabled(): return
+        sw_devs = [self.tree_sw.getData(item) for item in self.tree_sw]
+        out_devs = [self.tree_out.getData(item) for item in self.tree_out]
+        log_devs = [self.tree_log.getData(item) for item in self.tree_log]
+        self.lab.startSweep(sw_devs, out_devs, log_devs)
 
-    def gui_sweepResumed(self):
-        self.pause_button.setText("Pause")
-        self.pause_button.clicked.disconnect()
-        self.pause_button.clicked.connect(self.lab.pauseSweep)
-        self.sweep_status.setText("Running")
+    def gui_onSweepStarted(self, boo=True, text='Running'):
+        self.pause_button.setEnabled(boo)
+        self.abort_button.setEnabled(boo)
+        self.actionStartSweep.setEnabled(not boo)
+        self.sweep_status.setText(text)
 
-    def gui_removeDevice(self, gui_dev):
-        # remove the device from the trees
-        self.tree_sw.removeByData(gui_dev)
-        self.tree_out.removeByData(gui_dev)
-        self.tree_log.removeByData(gui_dev)
-
-    def _gui_progress(self, current_pts, total_pts):
-        # i/n
-        self.sweep_iteration.setText(f"{current_pts}/{total_pts}")
-
-    def _gui_eta(self, start_time, current_pts, total_pts):
+    def _setEta(self, start_time, current_pts, total_pts):
         # display it as h:m:s:
+        if None in [start_time, current_pts, total_pts]:
+            self.sweep_estimation.setText("")
+            return
+
         elapsed = time.time() - start_time
         remaining = elapsed * (total_pts - current_pts) / current_pts
 
@@ -309,13 +211,28 @@ class MainWindow(Window):
         s = remaining % 60
         self.sweep_estimation.setText(f"ETA: {h:.0f}:{m:02.0f}:{s:02.0f}")
 
-    def gui_sweepStatus(self, current_sweep):
+    def gui_onSweepProgress(self, sweep_status):
         # update the sweep status bar
-        self._gui_progress(current_sweep.iteration[0], current_sweep.iteration[1])
-        self._gui_eta(
-            current_sweep.start_time,
-            current_sweep.iteration[0],
-            current_sweep.iteration[1],
-        )
+        current_pts, total_pts = sweep_status.iteration[0], sweep_status.iteration[1]
+        self._setEta(sweep_status.start_time, current_pts, total_pts)
+        self.sweep_iteration.setText(f"{current_pts}/{total_pts}")
 
-    # -- end gui --
+    def _changePauseButton(self, new_text, new_onClick):
+        self.pause_button.setText(new_text)
+        self.pause_button.clicked.disconnect()
+        self.pause_button.clicked.connect(new_onClick)
+
+    def gui_onSweepPaused(self):
+        self._changePauseButton("Resume", self.lab.resumeSweep)
+        self.sweep_status.setText("Paused")
+
+    def gui_onSweepResumed(self):
+        self._changePauseButton("Pause", self.lab.pauseSweep)
+        self.sweep_status.setText("Running")
+
+    def gui_onSweepFinished(self):
+        self.gui_onSweepStarted(False, 'Ready')
+        # Reset pause button (in case of Pause->Abort):
+        self._changePauseButton("Pause", self.lab.pauseSweep)
+        self._setEta(None, None, None)
+    

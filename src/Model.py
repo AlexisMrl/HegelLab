@@ -4,8 +4,7 @@ from pyHegel import instruments
 from PyQt5.QtCore import QThread, pyqtSignal
 class setThread(QThread):
     # thread for set commands
-    finished_signal = pyqtSignal()
-    error_signal = pyqtSignal(object)
+    finished_signal = pyqtSignal(object)
 
     def __init__(self, dev, stop_fn):
         super().__init__()
@@ -20,8 +19,9 @@ class setThread(QThread):
         try:
             c.set(self.dev, self.value)
         except Exception as e:
-            self.error_signal.emit(e)
-        self.finished_signal.emit()
+            self.finished_signal.emit(e)
+        else:
+            self.finished_signal.emit(None)
 
 class Model:
     # The model is the only one doing the pyHegel commands
@@ -30,16 +30,33 @@ class Model:
     def __init__(self, lab):
         self.lab = lab
 
-    def getDevice(self, instr, name):
-        dev = getattr(instr, name)
-        return dev
-    
-    def getDevicesList(self, instr):
+    def getInstrumentList(self):
+        # return a string list of instrument classes
+        # the criteria for being an instrument is:
+        #    - inheriting from BaseInstrument
+        #    - not being BaseInstrument
+        #    - not starting with '_'
+        ret = []
+        blacklist = ['instrumen_base']
+        for instr_str in dir(instruments):
+            if instr_str.startswith("_"):
+                continue
+            instr = getattr(instruments, instr_str)
+            if not isinstance(instr, type):
+                continue
+            if instr is instruments.BaseInstrument:
+                continue
+            if not issubclass(instr, instruments.BaseInstrument):
+                continue
+            ret.append(instr)
+        return ret
+
+    def getDevicesList(self, instr, cls_only=False):
         # return a string list of device name
-        # the *very loose* criteria for being a device is:
+        # the criteria for being a device is:
         #    - having a get attr
         #    - having a set attr
-        #    - does not start with '_'
+        #    - not starting with '_'
         dev_list = []
         for dev_str in dir(instr):
             if dev_str.startswith('_'):
@@ -49,6 +66,9 @@ class Model:
                 dev_list.append(dev_str)
         return dev_list
 
+    def getDevice(self, instr, name):
+        dev = getattr(instr, name)
+        return dev
 
     def getChoices(self, dev):
         # return possible choices to a list
@@ -63,6 +83,16 @@ class Model:
         else:
             return None
 
+    def initLoopControl(self):
+        return c.Loop_Control()
+
+    def devType(self, dev):
+        # check the type of a device:
+        # set, get or set/get:
+        settable = True if dev._setdev_p is not None else False
+        gettable = True if dev._getdev_p is not None else False
+        return (settable, gettable)
+
     def getValue(self, dev, fn_after=None):
         return c.get(dev)
         #thread = getThread(dev)
@@ -75,32 +105,23 @@ class Model:
         #thread.start()
 
     def setValue(self, gui_dev, value):
-        #c.set(dev, value)
+        # start set thread
         thread = gui_dev.set_thread
         thread.stop()
         thread.wait()
         thread.value = value
         thread.start()
 
-    def startSweep(self, **kwargs):
-        return c.sweep_multi(**kwargs)
-
-    def initLoopControl(self):
-        return c.Loop_Control()
-
-    def devType(self, dev):
-        # check the type of a device:
-        # set, get or set/get:
-        settable = True if dev._setdev_p is not None else False
-        gettable = True if dev._getdev_p is not None else False
-        return (settable, gettable)
-    
-    def _initSetThread(self, dev, stop_fn):
+    def _initSetThread(self, gui_dev, dev, stop_fn):
+        # called by makeLogicalDevice
+        # every device has a set_thread
         thread = setThread(dev, stop_fn)
         #thread.finished_signal.connect(onFinished)
-        thread.error_signal.connect(self.lab.setValueError)
+        def onFinished(exception):
+            self.lab.sig_setValueFinished.emit(gui_dev, exception)
+        thread.finished_signal.connect(onFinished)
         return thread
-        
+    
     def makeLogicalDevice(self, gui_dev, gui_dev_kwargs, instrument):
         # kwargs = {'scale':{kw scale}, 'ramp':{kw ramp}, 'limit':{kw limit}}
         # (not dict but OrederedDict)
@@ -138,7 +159,7 @@ class Model:
             new_dev._quiet_del = True
         
         # init set thread:
-        thread = self._initSetThread(new_dev, stop_fn)
+        thread = self._initSetThread(gui_dev, new_dev, stop_fn)
         gui_dev.set_thread = thread
 
         if new_dev == basedev:

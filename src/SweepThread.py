@@ -1,8 +1,11 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 import traceback
 
+from pyHegel.commands import sweep_multi
 
-class CurrentSweep:
+
+class SweepStatus:
+    # object emitted in every progress signals
     def __init__(self):
         self.start_time = None  # time.time() at the beginning of the sweep
         self.iteration = [None, None]  # i out of n
@@ -12,21 +15,21 @@ class CurrentSweep:
 
 
 class SweepThread(QThread):
-    progress_signal = pyqtSignal(CurrentSweep)  # (CurrentSweep)
-    error_signal = pyqtSignal(str, str)  # (Exception)
-    finished_signal = pyqtSignal()
-
     # The sweep thread:
     # runs the sweep and calls 'after_get' every point
     # sending a SweepStatusObject to the main thread.
 
-    def __init__(self, sweep_multi_fn, loop_control):
+    def __init__(self, loop_control, sig_progress, sig_error, sig_finished):
         super(SweepThread, self).__init__()
-        self.sweep_multi_fn = sweep_multi_fn
         self.loop_control = loop_control
-        self.fn_kwargs = None
+        self.sig_progress = sig_progress
+        self.sig_error = sig_error
+        self.sig_finished = sig_finished
+        self.enable_live = True
 
-        self.current_sweep = CurrentSweep()
+        self.fn_kwargs = None
+        self.status = SweepStatus()
+        self.raz_sw_devs = lambda: None
 
     def initSweepKwargs(self, sweep_multi_kwargs):
         self.fn_kwargs = sweep_multi_kwargs
@@ -34,40 +37,39 @@ class SweepThread(QThread):
         self.fn_kwargs["exec_after"] = self.after_get
         self.fn_kwargs["graph"] = False
 
-    def initCurrentSweep(self, gui_sw_devs, gui_out_devs, start_time):
-        self.current_sweep.sw_devs = gui_sw_devs
-        self.current_sweep.out_devs = gui_out_devs
-        self.current_sweep.start_time = start_time
+    def initSweepStatus(self, gui_sw_devs, gui_out_devs, start_time):
+        self.status.sw_devs = gui_sw_devs
+        self.status.out_devs = gui_out_devs
+        self.status.start_time = start_time
+        self.enable_live = len(gui_sw_devs) <= 2
 
     def run(self):
         try:
-            self.sweep_multi_fn(**self.fn_kwargs)  # THE SWEEP
+            sweep_multi(**self.fn_kwargs)  # THE SWEEP
         except Exception as e:
-            tb_str = "".join(traceback.format_tb(e.__traceback__))
-            self.error_signal.emit(type(e).__name__, tb_str)
+            self.sig_error.emit(e)
         finally:
-            self.finished_signal.emit()
+            self.raz_sw_devs()
+            self.sig_finished.emit()
 
     def after_get(self, datas):
         # exec between set and get
         # datas is a dict detailed in pyHegel.commands._Sweep
 
-        self.current_sweep.iteration[0] = datas["iter_part"]
-        self.current_sweep.iteration[1] = datas[
-            "iter_total"
-        ]  # no need, but for consistency
-        self.current_sweep.datas = datas
+        self.status.iteration[0] = datas["iter_part"]
+        self.status.iteration[1] = datas["iter_total"] 
+        self.status.datas = datas
 
         # this used to be done in the main thread,
         # but it led to a bug where it sometimes
         # missed some points
-        i = datas["iter_part"] - 1
-        for out_dev, val in zip(self.current_sweep.out_devs, datas["read_vals"]):
-            out_dev.values[out_dev.sw_idx.current()] = val
-
-        # for sw_dev, val in zip(self.current_sweep.sw_devs,
+        if self.enable_live:
+            for out_dev, val in zip(self.status.out_devs, datas["read_vals"]):
+                out_dev.values[out_dev.sw_idx.current()] = val
+    
+        # for sw_dev, val in zip(self.status.sw_devs,
         # datas["ask_vals"]):
         # sw_dev.values[*out_dev.idx.current()] = val
 
         # emit self.progress
-        self.progress_signal.emit(self.current_sweep)
+        self.sig_progress.emit(self.status)

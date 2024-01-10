@@ -1,10 +1,10 @@
-import traceback
 import sys
 
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QObject, pyqtSignal
 
 from windows import MainWindow, RackWindow, DisplayWindow, MonitorWindow
-from widgets import WindowWidget
+from widgets import WindowWidget, TreeWidget
 from src import LoaderSaver, Model, Popup, SweepThread#, Shortcuts
 from src.GuiInstrument import GuiInstrument, GuiDevice
 from src.SweepIdxIter import IdxIter
@@ -19,39 +19,78 @@ import os
 # HegelLab is made to support any instrument with minimal effort.
 # It should be enough to add the instrument class to the json file.
 
+# naming rules (not always respected but yeah):
+# _method : is a method called only from within its class
+# sig_name : a pyqt signal
+# gui_method : a method connected to a signal comming from another class ("gui-wide" signals)
 
-class HegelLab:
+
+class HegelLab(QObject):
     def __init__(self, app):
+        super().__init__()
 
         self.app = app
 
+
         self.loader = LoaderSaver.LoaderSaver(self)
         self.pop = Popup.Popup()
-        # model, views
         self.model = Model.Model(self)
-        self.view_main = MainWindow.MainWindow(self)
-        self.view_rack = RackWindow.RackWindow(self)
-        self.view_display = DisplayWindow.DisplayWindow(self)
-        self.view_monitor = MonitorWindow.MonitorWindow(self)
+        self.view_main = main = MainWindow.MainWindow(self)
+        self.view_rack = rack = RackWindow.RackWindow(self)
+        self.view_display = disp = DisplayWindow.DisplayWindow(self)
+        self.view_monitor = moni = MonitorWindow.MonitorWindow(self)
 
         # shortcut:
-        WindowWidget.Window.lab = self
-        WindowWidget.Window.initShortcutsAll()
+        TreeWidget.TreeWidget.lab = self
+        WindowWidget.Window.initShortcutsAll(self)
 
-        
+        # default instrument list
+        self.default_instr_list = self.loader.importFromJSON('default_instruments.json')
+        self.gui_instruments = []  # list of loaded GuiInstrument
 
-        # data
-        self.instr_list = self.loader.importFromJSON('default_instruments.json')
-        self.gui_instruments = []  # list of GuiInstrument in rack
+        # signals -->
+        self.sig_instrumentAdded.connect(rack.gui_onInstrumentAdded)
+        self.sig_instrumentLoadFinished.connect(rack.gui_updateGuiInstrument)
+        self.sig_deviceLoadFinished.connect(rack.gui_updateGuiDevice)
+        self.sig_newDevicesAdded.connect(rack.gui_onNewDevicesAdded)
+        self.sig_onInstrumentRemoved.connect(rack.gui_onInstrumentRemoved)
+        self.sig_deviceRemoved.connect(rack.gui_onDeviceRemoved)
+        self.sig_deviceRemoved.connect(main.gui_onDeviceRemoved)
+        self.sig_deviceRemoved.connect(moni.gui_onDeviceRemoved)
+        self.sig_valueGet.connect(rack.gui_onValueGet)
+        self.sig_valueSet.connect(rack.gui_onValueSet)
+        self.sig_deviceRenamed.connect(rack.gui_onDeviceRenamed)
+        self.sig_deviceRenamed.connect(main.gui_onDeviceRenamed)
+        self.sig_deviceRenamed.connect(moni.gui_onDeviceRenamed)
+
+        self.sig_sweepDeviceSet.connect(main.gui_updateSweepDevice)
+        self.sig_outDeviceSet.connect(main.gui_updateOutDevice)
+        self.sig_logDeviceSet.connect(main.gui_updateLogDevice)
+        self.sig_monitorDeviceSet.connect(moni.gui_updateMonitorDevice)
+        self.sig_sweepDeviceSet.connect(lambda gui_dev: rack.gui_updateGuiDevice(gui_dev))
+        self.sig_outDeviceSet.connect(lambda gui_dev: rack.gui_updateGuiDevice(gui_dev))
+        self.sig_logDeviceSet.connect(lambda gui_dev: rack.gui_updateGuiDevice(gui_dev))
+        self.sig_monitorDeviceSet.connect(lambda gui_dev: rack.gui_updateGuiDevice(gui_dev))
+
+        # signals <--
+        self.sig_instrumentLoadFinished.connect(self.onLoadInstrumentFinished)
+        self.sig_setValueFinished.connect(self.onSetValueFinished)
+    
 
         # sweep related
         self.loop_control = self.model.initLoopControl()
-        self.sweep_thread = SweepThread.SweepThread(
-            self.model.startSweep, self.loop_control
-        )
-        self.sweep_thread.progress_signal.connect(self.onSweepSignalProgress)
-        self.sweep_thread.error_signal.connect(self.onSweepSignalError)
-        self.sweep_thread.finished_signal.connect(self.onSweepSignalFinished)
+        self.sweep_thread = SweepThread.SweepThread(self.loop_control, self.sig_sweepProgress, self.sig_sweepError, self.sig_sweepFinished)
+
+        self.sig_sweepStarted.connect(lambda: main.gui_onSweepStarted())
+        self.sig_sweepStarted.connect(disp.gui_onSweepStarted)
+        self.sig_sweepProgress.connect(main.gui_onSweepProgress)
+        self.sig_sweepProgress.connect(disp.gui_onSweepProgress)
+        self.sig_sweepPaused.connect(main.gui_onSweepPaused)
+        self.sig_sweepResumed.connect(main.gui_onSweepResumed)
+
+        self.sig_sweepError.connect(self.pop.sweepThreadError)
+        self.sig_sweepFinished.connect(main.gui_onSweepFinished)
+        
 
     # -- GENERAL --
 
@@ -62,13 +101,14 @@ class HegelLab:
         self.view_rack.focus()
 
     def showDisplay(self, dual=None):
-        self.view_display.focus()
-    
+        self.view_display.focus(dual)
+
     def showMonitor(self):
         self.view_monitor.focus()
 
     def askClose(self, event):
         if self.pop.askQuit():
+            self.abortSweep()
             self.sweep_thread.terminate()
             #self.model.close()
             WindowWidget.Window.killAll()
@@ -76,6 +116,7 @@ class HegelLab:
             event.ignore()
     
     def getGuiInstrument(self, instr_nickname):
+        # search and return the instance of gui_instr
         for gui_instr in self.gui_instruments:
             if gui_instr.nickname != instr_nickname:
                 continue
@@ -104,7 +145,7 @@ class HegelLab:
 
     def _instanciateGuiInstrument(self, nickname, addr, slot, instr_dict):
         # call only by the Rack when loading is clicked.
-        # build GuiInstrument and populate dvices, but no ph_instr nor ph_dev
+        # build GuiInstrument but leave ph_instr empty
         # loading is done in loadGuiInstrument.
         nickname = self._checkInstrNickname(nickname)
         ph_class = instr_dict.get('ph_class')
@@ -117,6 +158,7 @@ class HegelLab:
     def _instanciateGuiDevices(self, gui_instr, instr_dict):
         # instanciate all the devices in instr_dict[devices] and add them to gui_instr
         devices = instr_dict.get('devices', [])
+        added = []
         for dev_dict in devices:
             ph_name = dev_dict.get('ph_name')
             nickname = dev_dict.get('nickname', ph_name)
@@ -164,7 +206,10 @@ class HegelLab:
             gui_dev.logical_kwargs['limit'] = limit_kw
 
             gui_instr.gui_devices.append(gui_dev)
+            added.append(gui_dev)
+        return added
 
+    sig_instrumentAdded = pyqtSignal(GuiInstrument)
     def newInstrumentFromRack(self, nickname, addr, slot, instr_dict):
         # control flow for instanciate GuiInstrument and load ph_instr 
         # instanciating
@@ -175,99 +220,84 @@ class HegelLab:
         auto_load = instr_dict.get('auto_load', False)
         if auto_load:
             self.loadGuiInstrument(gui_instr)
+        
+        self.sig_instrumentAdded.emit(gui_instr)
 
-        # "signals"
-        self.view_rack.gui_addGuiInstrument(gui_instr)
-        self.view_rack.win_add.close()
-
+    sig_instrumentLoadFinished = pyqtSignal(GuiInstrument, object)
     def loadGuiInstrument(self, gui_instr):
-        # ask for loading a GuiInstrument 
+        # ask driver for loading a GuiInstrument 
         # the driver must set the gui_instr.ph_instr attribute
-        # if it fails, it must raise an exception and call loadGuiInstrumentError
-        eval(gui_instr.driver).load(self, gui_instr)
+        # on success(fail), the driver must emit sig_success(sig_error) 
+        # it also emit the signals without exception=None if success
+        eval(gui_instr.driver).load(self, gui_instr, self.sig_instrumentLoadFinished)
     
-    def loadGuiInstrumentError(self, gui_instr, exception):
-        # called by drivers when loading a GuiInstrument
-        tb_str = "".join(traceback.format_tb(exception.__traceback__))
-        self.pop.instrLoadError(exception, tb_str)
-        self.view_rack.gui_updateGuiInstrument(gui_instr)
-
-    def loadGuiDevices(self, gui_instr):
-        # called by drivers when loading a GuiInstrument
-        # try to load gui_devices of gui_instr that are not loaded yet
-        for gui_dev in gui_instr.gui_devices:
-            if gui_dev.isLoaded(): continue
-            try:
-                ph_dev = self.model.getDevice(gui_instr.ph_instr, gui_dev.ph_name)
-                gui_dev.ph_dev = ph_dev
-                # type
-                detected_type = self.model.devType(ph_dev)
-                type = [detected_type[0] if gui_dev.type[0] is None else gui_dev.type[0],
-                        detected_type[1] if gui_dev.type[1] is None else gui_dev.type[1]]
-                gui_dev.type = tuple(type)
-                gui_dev.ph_choice = self.model.getChoices(ph_dev)
-            except Exception as e:
-                tb_str = "".join(traceback.format_tb(e.__traceback__))
-                self.pop.devLoadError(e, tb_str)
-                continue
-
-
-            # logical device
-            self.loadGuiLogicalDevice(gui_dev)
-
-        self.view_rack.gui_updateGuiInstrument(gui_instr)
-            
-    def setGuiDevExtraArgs(self, gui_dev, extra_args_str):
-        # extra_args_str will be eval in a dict, so it must be like:
-        # "ch=1, vals='r'"
-        # try to eval extra_args_str and set if succeed
+    def onLoadInstrumentFinished(self, gui_instr, exception):
+        # connected to sig_instrumentLoadFinished
+        if exception:
+            self.pop.instrLoadError(exception)
+        else:
+            # try load all devices
+            for gui_dev in gui_instr.gui_devices:
+                self.loadGuiDevice(gui_dev)
+    
+    sig_deviceLoadFinished = pyqtSignal(GuiDevice)
+    def loadGuiDevice(self, gui_dev):
+        # try to load basedev of gui_device (assuming gui_dev.parent.ph_instr is not None)
         try:
-            extra_args_dict = eval(f"dict({extra_args_str})")
-            gui_dev.extra_args = extra_args_dict
+            ph_dev = self.model.getDevice(gui_dev.parent.ph_instr, gui_dev.ph_name)
+            gui_dev.ph_dev = ph_dev
+            # type
+            detected_type = self.model.devType(ph_dev)
+            type = [detected_type[0] if gui_dev.type[0] is None else gui_dev.type[0],
+                    detected_type[1] if gui_dev.type[1] is None else gui_dev.type[1]]
+            gui_dev.type = tuple(type)
+            # choice
+            gui_dev.ph_choice = self.model.getChoices(ph_dev)
         except Exception as e:
-            tb_str = "".join(traceback.format_tb(e.__traceback__))
-            self.pop.devExtraArgsEvalFail(e, tb_str)
-
-    def loadGuiLogicalDevice(self, gui_dev):
-        # try to build the logical device based on logical_kwargs
-        ramp_rate = gui_dev.logical_kwargs['ramp'].get('rate', -1)
-        if ramp_rate == 0:
-            self.pop.devRampZero()
-            return
-        scale_factor = gui_dev.logical_kwargs['scale'].get('factor', -1)
-        if scale_factor == 0:
-            self.pop.devScaleZero()
+            self.pop.devLoadError(e)
+            self.sig_deviceLoadFinished.emit(gui_dev)
             return
         try:
             gui_dev.logical_dev = self.model.makeLogicalDevice(gui_dev,
                                                                gui_dev.logical_kwargs,
                                                                gui_dev.parent.ph_instr)
         except Exception as e:
-            tb_str = "".join(traceback.format_tb(e.__traceback__))
-            self.pop.devLoadLogicalError(e, tb_str)
-            return
-        self.view_rack.gui_updateGuiInstrument(gui_dev.parent)
-        self.view_rack.win_devconfig.close()
-    
+            self.pop.devLoadLogicalError(e)
+        self.sig_deviceLoadFinished.emit(gui_dev)
+            
+    sig_newDevicesAdded = pyqtSignal(GuiInstrument, list)
     def newDevicesFromRack(self, gui_instr, dev_dicts):
+        # called when a new device is added to an instr
         # dev_dicts is a list of dict: [{ph_name:'dev1', ph_name:'dev2'...}]
-        self._instanciateGuiDevices(gui_instr, dict(devices=dev_dicts))
-        self.loadGuiDevices(gui_instr)
-        self.view_rack.gui_updateGuiInstrument(gui_instr)
+        gui_dev_added = self._instanciateGuiDevices(gui_instr, dict(devices=dev_dicts))
+        # signal new devices have come
+        self.sig_newDevicesAdded.emit(gui_instr, gui_dev_added)
+        # then load them
+        [self.loadGuiDevice(gui_dev) for gui_dev in gui_dev_added]
 
+    sig_onInstrumentRemoved = pyqtSignal(GuiInstrument)
     def removeGuiInstrument(self, gui_instr):
-        if self.pop.askRemoveInstrument(gui_instr.nickname) == False:
-            return
-        # remove its devices in the trees:
-        for dev in gui_instr.gui_devices:
-            self.view_main.gui_removeDevice(dev)
-            self.view_monitor.gui_removeDevice(dev)
+        if not self.pop.askRemoveInstrument(gui_instr.nickname): return
+
+        for gui_dev in gui_instr.gui_devices:
+            self.removeGuiDevice(gui_dev, ask_first=False)
+
         self.gui_instruments.remove(gui_instr)
-        self.view_rack.gui_removeGuiInstrument(gui_instr)
+        # TODO: properly delete pyhegel instrument
         if gui_instr.ph_instr is not None:
             del gui_instr.ph_instr
+        self.sig_onInstrumentRemoved.emit(gui_instr)
         del gui_instr
+    
+    sig_deviceRemoved = pyqtSignal(GuiDevice)
+    def removeGuiDevice(self, gui_dev, ask_first=True):
+        if ask_first and not self.pop.askRemoveDevice(gui_dev.nickname): return
 
+        gui_instr = gui_dev.parent
+        gui_instr.gui_devices.remove(gui_dev)
+        self.sig_deviceRemoved.emit(gui_dev)
+
+    sig_valueGet = pyqtSignal(GuiDevice)
     def getValue(self, gui_dev):
         # get the value of the GuiDevice and update the gui
         # To be able to get even when the device is rapming,
@@ -277,8 +307,7 @@ class HegelLab:
             if dev is None: return
             value = self.model.getValue(dev)
         except Exception as e:
-            tb_str = "".join(traceback.format_tb(e.__traceback__))
-            self.pop.getValueError(e, tb_str)
+            self.pop.getValueError(e)
             return
 
         # because logical_dev is innacessible when ramping:
@@ -287,65 +316,70 @@ class HegelLab:
             value = value / factor
 
         gui_dev.cache_value = value
-        self.view_rack.gui_updateDeviceValue(gui_dev, value)
-        self.view_monitor.gui_updateDeviceValue(gui_dev, value)
+        self.sig_valueGet.emit(gui_dev)
         return value
 
+    sig_setValueFinished = pyqtSignal(GuiDevice, object)
     def setValue(self, gui_dev, val):
-        # set the value of the GuiDevice and update the gui
         self.model.setValue(gui_dev, val)
-        self.view_rack.win_set.close()
     
-    def setValueError(self, e):
-        tb_str = "".join(traceback.format_tb(e.__traceback__))
-        self.pop.setValueError(e, tb_str)
+    sig_valueSet = pyqtSignal(GuiDevice)
+    def onSetValueFinished(self, gui_dev, exception):
+        if exception:
+            self.pop.setValueError(exception)
+        else:
+            self.sig_valueSet.emit(gui_dev)
 
+    sig_deviceRenamed = pyqtSignal(GuiDevice)
     def renameDevice(self, gui_dev, new_nickname):
         gui_dev.nickname = new_nickname
-        self.view_main.gui_renameDevice(gui_dev)
-        self.view_rack.gui_renameDevice(gui_dev)
-        self.view_monitor.gui_renameDevice(gui_dev)
+        self.sig_deviceRenamed.emit(gui_dev)
+        #self.view_main.gui_renameDevice(gui_dev)
+        #self.view_rack.gui_renameDevice(gui_dev)
+        #self.view_monitor.gui_renameDevice(gui_dev)
 
     # -- SWEEP TREES --
+    # sig emitted when add/remove is finished
+    sig_sweepDeviceSet = pyqtSignal(GuiDevice, bool) # True: device has been set. False: device has been removed
+    sig_outDeviceSet = pyqtSignal(GuiDevice, bool)
+    sig_logDeviceSet = pyqtSignal(GuiDevice, bool)
+    sig_monitorDeviceSet = pyqtSignal(GuiDevice, bool)
 
-    def addSweepDev(self, gui_dev, row):
-        # add a device to the sweep tree, launch the config window
-        if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
-            return
-        # if the device is not gettable, ask if we want to add it anyway
-        if gui_dev.type[0] == False and self.pop.notSettable() == False:
-            return
-        self.view_main.gui_addSweepGuiDev(gui_dev, row)
-        self.showSweepConfig(gui_dev)
+    def setSweepDevice(self, gui_dev, boo=True):
+        # bool: True for add, False for remove
+        if not boo: pass
+        elif not gui_dev.isLoaded() and not self.pop.devNotLoaded(): return
+        elif not gui_dev.type[0] and not self.pop.notSettable(): return
+        else: # launch the sweep config window for gui_dev
+            driver_cls = eval(gui_dev.parent.driver)
+            driver_cls.sweep(self, gui_dev, self.sig_sweepDeviceSet)
+        gui_dev.status['sweep'] = boo
+        self.sig_sweepDeviceSet.emit(gui_dev, boo)
 
-    def addOutputDev(self, gui_dev, row):
-        # add a device to the output tree
-        if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
-            return
-        if gui_dev.type[1] == False and self.pop.notGettable() == False:
-            return
-        self.view_main.gui_addOutItem(gui_dev, row)
+    def setOutDevice(self, gui_dev, boo=True):
+        # bool: True for add, False for remove
+        if not boo: pass
+        elif not gui_dev.isLoaded() and not self.pop.devNotLoaded(): return
+        elif not gui_dev.type[1] and not self.pop.notGettable(): return
+        gui_dev.status['out'] = boo
+        self.sig_outDeviceSet.emit(gui_dev, boo)
 
-    def addLogDev(self, gui_dev, row):
-        # add a device to the log tree
-        if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
-            return
-        self.view_main.gui_addLogItem(gui_dev, row)
+    def setLogDevice(self, gui_dev, boo=True):
+        # bool: True for add, False for remove
+        if not boo: pass
+        elif not gui_dev.isLoaded() and not self.pop.devNotLoaded(): return
+        elif not gui_dev.type[1] and not self.pop.notGettable(): return
+        gui_dev.status['log'] = boo
+        self.sig_logDeviceSet.emit(gui_dev, boo)
 
-    def showSweepConfig(self, gui_dev):
-        # launch the sweep config window for gui_dev
-        driver_cls = eval(gui_dev.parent.driver)
-        driver_cls.sweep(self, gui_dev)
+    def setMonitorDevice(self, gui_dev, boo=True):
+        # bool: True for add, False for remove
+        if not boo: pass
+        elif not gui_dev.isLoaded() and not self.pop.devNotLoaded(): return
+        elif not gui_dev.type[1] and not self.pop.notGettable(): return
+        gui_dev.status['monitor'] = boo
+        self.sig_monitorDeviceSet.emit(gui_dev, boo)
 
-    def setSweepValues(self, gui_dev, start, stop, npts):
-        # set sweep values for gui_dev and update the gui
-        gui_dev.sweep = [start, stop, npts]
-        self.view_main.gui_updateSweepValues(gui_dev)
-    
-    def showConfig(self, gui_instr):
-        # launch the driver config window
-        driver_cls = eval(gui_instr.driver)
-        driver_cls.config(self, gui_instr)
     
     def exportToJSON(self):
         self.loader.exportToJSON(self.gui_instruments)
@@ -361,6 +395,8 @@ class HegelLab:
     
     def exportToPyHegel(self):
         self.loader.exportToPyHegel(self.gui_instruments)
+
+
 
     # -- SWEEP THREAD --
 
@@ -389,7 +425,7 @@ class HegelLab:
             if start == stop:
                 self.pop.sweepStartStopEqual()
                 return True
-        if ph_out_devs == [] and self.pop.sweepNoOutputDevice() == False:
+        if ph_out_devs == [] and not self.pop.sweepNoOutputDevice():
             return True
         return False
 
@@ -416,8 +452,7 @@ class HegelLab:
         # start, stop, npts are lists
         # allocate data in out_devices for the live view.
         # we allocate a numpy array for output devices
-        # and an 'custom iterator' so the filling is in
-        # a good order.
+        # and an "custom iterator".
 
         reverse = [False] * len(start)
         for i, (sta, sto) in enumerate(zip(start, stop)):
@@ -431,33 +466,28 @@ class HegelLab:
                 dev.values = np.full(npts, np.nan)
                 dev.sw_idx = IdxIter(*npts, *reverse, alternate)
 
-    def startSweep(self):
-        # trigger on start sweep button
-        # prepare everything and start the thread.
-        gui_sw_devs = self.view_main.gui_getSweepGuiDevs()
-        gui_out_devs = self.view_main.gui_getOutputGuiDevs()
-        gui_log_devs = self.view_main.gui_getLogGuiDevs()
+    sig_sweepStarted = pyqtSignal(SweepThread.SweepStatus)
+    sig_sweepPaused = pyqtSignal()
+    sig_sweepResumed = pyqtSignal()
+    sig_sweepProgress = pyqtSignal(SweepThread.SweepStatus)
+    sig_sweepError = pyqtSignal(Exception)
+    sig_sweepFinished = pyqtSignal()
+    def startSweep(self, gui_sw_devs, gui_out_devs, gui_log_devs):
+        # Prepare everything and start the thread.
 
         # generate lists and allocate data
-        ph_sw_devs, start, stop, npts, ph_out_devs, ph_log_devs = self._genLists(
-            gui_sw_devs, gui_out_devs, gui_log_devs
-        )
-        alternate = {True: "alternate", False: False}[
-            self.view_main.cb_alternate.isChecked()
-        ]
+        ph_sw_devs, start, stop, npts, ph_out_devs, ph_log_devs = self._genLists(gui_sw_devs, gui_out_devs, gui_log_devs)
+        alternate = {True: "alternate", False: False}[self.view_main.cb_alternate.isChecked()]
         self._allocData(gui_out_devs, start, stop, npts, alternate)
 
-        # errors
+        # check for errors
         if self._startSweepCheckError(start, stop, npts, ph_sw_devs, ph_out_devs):
+            self.sig_sweepFinished.emit()
             return
 
         # prepare kw
         sweep_kwargs = {
-            "dev": ph_sw_devs,
-            "start": start,
-            "stop": stop,
-            "npts": npts,
-            "out": ph_out_devs,
+            "dev": ph_sw_devs, "start": start, "stop": stop, "npts": npts, "out": ph_out_devs,
             "filename": self._prepareFilename(),
             "extra_conf": [self.view_main.te_comment.toPlainText()] + ph_log_devs,
             "beforewait": self.view_main.sb_before_wait.value(),
@@ -466,46 +496,31 @@ class HegelLab:
 
         # run sweep thread
         self.sweep_thread.initSweepKwargs(sweep_kwargs)
-        self.sweep_thread.initCurrentSweep(gui_sw_devs, gui_out_devs, time.time())
+        self.sweep_thread.initSweepStatus(gui_sw_devs, gui_out_devs, time.time())
+        self.sweep_thread.raz_sw_devs = lambda: [self.setValue(gui_dev, 0) for gui_dev in gui_sw_devs]
         for out in gui_out_devs:
             out.alternate = self.view_main.cb_alternate.isChecked()
         self.sweep_thread.start()
 
         # update gui
-        self.view_display.onSweepStarted(self.sweep_thread.current_sweep)
-        self.view_main.gui_sweepStarted()
-        self.showDisplay()
-
-    def onSweepSignalProgress(self, current_sweep):
-        # connected to the sweep thread
-        # current_sweep is a SweepStatusObject
-
-        # update display and status
-        self.view_display.onIteration(current_sweep)
-        self.view_main.gui_sweepStatus(current_sweep)
-
-    def onSweepSignalError(self, name, message):
-        # called by the sweep thread
-        self.pop.sweepThreadError(name, message)
-
-    def onSweepSignalFinished(self):
-        # called by the sweep thread
-        self.view_main.gui_sweepFinished()
+        self.sig_sweepStarted.emit(self.sweep_thread.status)
+        #self.showDisplay()
 
     def pauseSweep(self):
         # called by the main window
         self.loop_control.pause_enabled = True
-        self.view_main.gui_sweepPaused()
+        self.sig_sweepPaused.emit()
 
     def resumeSweep(self):
         # called by the main window
         self.loop_control.pause_enabled = False
-        self.view_main.gui_sweepResumed()
+        self.sig_sweepResumed.emit()
 
     def abortSweep(self):
         # called by the main window
         self.loop_control.abort_enabled = True
-        self.loop_control.pause_enabled = False  # in case of Pause->Abort
+        self.loop_control.pause_enabled = False
+        self.sig_sweepFinished.emit()
 
 if __name__ == "__main__":
     from PyQt5.QtWidgets import QSplashScreen
@@ -534,17 +549,11 @@ if __name__ == "__main__":
     pixmap = QPixmap("./resources/favicon/favicon.png")
     pixmap = pixmap.scaled(256, 256)
     splash = QSplashScreen(pixmap)
-    splash.showMessage(
-        "Loading HegelLab...",
-        alignment=QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter,
-        color=QtCore.Qt.white,
-    )
-
+    splash.showMessage("Loading HegelLab...", alignment=QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter, color=QtCore.Qt.white)
     splash.show()
 
     hl = HegelLab(app)
     splash.finish(hl.view_main)
-
     hl.showMain()
     
     if create_app:

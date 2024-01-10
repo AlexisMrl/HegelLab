@@ -160,7 +160,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionLoad"/>
-   <addaction name="actionConfig"/>
+   <addaction name="actionEditDevices"/>
    <addaction name="separator"/>
    <addaction name="actionAdd"/>
    <addaction name="actionRemove"/>
@@ -226,7 +226,7 @@
     <string>from JSON</string>
    </property>
   </action>
-  <action name="actionConfig">
+  <action name="actionEditDevices">
    <property name="enabled">
     <bool>false</bool>
    </property>

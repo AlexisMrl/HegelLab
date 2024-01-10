@@ -1,7 +1,7 @@
 from pyHegel.gui import ScientificSpinBox
 from pyHegel import instruments, instruments_base
 from PyQt5 import QtGui, uic
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QEvent
+from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import (
     QWidget,
     QGridLayout,
@@ -10,12 +10,9 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QFormLayout,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QShortcut
+    QCheckBox,
 )
 from widgets.WindowWidget import Window
-from widgets.TreeWidget import TreeWidget
 
 ####################
 # Loading thread
@@ -56,8 +53,8 @@ class Default:
     # a class to inherit from when creating a custom gui for an instrument
 
     @staticmethod
-    def load(lab, gui_instr):
-        # load the instrument, finish by calling lab.loadGuiDevices(gui_instr)
+    def load(lab, gui_instr, sig_finished):
+        # load the instrument, finish by emitting sig_finished.emit(gui_instr)
 
         nickname = gui_instr.nickname
         ph_class = eval(gui_instr.ph_class)
@@ -66,68 +63,29 @@ class Default:
         if gui_instr.slot is not None:
             kwargs['slot'] = gui_instr.slot
 
-        def loaded(instr):
-            gui_instr.ph_instr = instr
-            lab.loadGuiDevices(gui_instr)
-            del gui_instr._loading_thread
-
         thread = LoadThread(nickname, ph_class, address, kwargs)
-        thread.loaded_signal.connect(loaded)
-        thread.error_signal.connect(lambda e: lab.loadGuiInstrumentError(gui_instr, e))
-        gui_instr._loading_thread = thread
+
+        def success(instr):
+            gui_instr.ph_instr = instr
+            sig_finished.emit(gui_instr, None)
+            #lab.loadGuiDevices(gui_instr)
+            del gui_instr._loading_thread
+        thread.loaded_signal.connect(success)
+        
+        def error(err):
+            sig_finished.emit(gui_instr, err)
+            del gui_instr._loading_thread
+        thread.error_signal.connect(error)
+
+        gui_instr._loading_thread = thread # to keep a reference to it
         thread.start()
 
     @staticmethod
-    def config(lab, gui_instr):
-        if gui_instr.ph_instr is None: return
-
-        win = Window()
-        win.setWindowTitle("Add devices " + gui_instr.getDisplayName())
-        win.setWindowIcon(QtGui.QIcon("resources/resources/instruments.png"))
-        wid = QWidget()
-        wid = QWidget()
-        win.setCentralWidget(wid)
-        layout = QGridLayout()
-        wid.setLayout(layout)
-
-        # widgets
-        lw = QListWidget()
-        lw.setSelectionMode(2)
-            # remap j/k
-        short_j = QShortcut(QtGui.QKeySequence("j"), lw)
-        short_k = QShortcut(QtGui.QKeySequence("k"), lw)
-        short_j.activated.connect(lambda: lw.keyPressEvent(QtGui.QKeyEvent(QEvent.KeyPress, Qt.Key_Down, Qt.NoModifier)))
-        short_k.activated.connect(lambda: lw.keyPressEvent(QtGui.QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)))
-        dev_list = lab.model.getDevicesList(gui_instr.ph_instr)
-        #already_loaded_dev = [gui_dev.ph_name for gui_dev in gui_instr.gui_devices]
-        lw.addItems(dev_list)
-        btn_add = QPushButton('Add devices')
-        btn_cancel = QPushButton('Cancel')
-
-        layout.addWidget(lw, 0, 0, 1, 2)
-        layout.addWidget(btn_add, 1, 0)
-        layout.addWidget(btn_cancel, 1, 1)
-
-        def onAdd():
-            devices = []
-            for item in lw.selectedItems():
-                devices.append(dict(ph_name=item.text()))
-            lab.newDevicesFromRack(gui_instr, devices)
-
-            win.close()
-        btn_add.clicked.connect(onAdd)
-        btn_cancel.clicked.connect(win.close)
-
-        gui_instr._win_devs = win
-        win.focus()
-
-
-
-    @staticmethod
-    def sweep(lab, gui_dev):
+    def sweep(lab, gui_dev, sig_finished):
         # set the sweep attribute of gui_dev
         # gui_dev.sweep = [start, stop, npts]
-        # must save its win to avoid garbage collection
+        # then emit sig_finished with parameters: (gui_dev, True)
+        # must save its window to avoid garbage collection
 
         # minimal window for defining sweep start, stop, step:
         display_name = gui_dev.getDisplayName("long")
@@ -144,11 +102,13 @@ class Default:
         label_stop = QLabel("Stop:")
         label_npts = QLabel("# pts:")
         label_step = QLabel("Steps:")
+        label_raz = QLabel("Ret. to 0:")
         spin_start = ScientificSpinBox.PyScientificSpinBox()
         spin_stop = ScientificSpinBox.PyScientificSpinBox()
         spin_npts = QSpinBox()
         spin_npts.setMaximum(1000000)
         spin_step = ScientificSpinBox.PyScientificSpinBox(buttonSymbols=2, readOnly=True)
+        check_raz = QCheckBox(checked=gui_dev.raz)
         ok_button = QPushButton("Ok")
 
         # set values if not None:
@@ -165,11 +125,13 @@ class Default:
         layout.addWidget(label_stop, 1, 0)
         layout.addWidget(label_npts, 2, 0)
         layout.addWidget(label_step, 3, 0)
+        layout.addWidget(label_raz, 4, 0)
         layout.addWidget(spin_start, 0, 1)
         layout.addWidget(spin_stop, 1, 1)
         layout.addWidget(spin_npts, 2, 1)
         layout.addWidget(spin_step, 3, 1)
-        layout.addWidget(ok_button, 4, 1)
+        layout.addWidget(check_raz, 4, 1)
+        layout.addWidget(ok_button, 5, 1)
 
         # connect signals:
         def updateStep():
@@ -186,19 +148,14 @@ class Default:
         updateStep()
 
         def onOk():
+            gui_dev.sweep = [spin_start.value(), spin_stop.value(), spin_npts.value()]
+            gui_dev.raz = check_raz.isChecked()
+            sig_finished.emit(gui_dev, True)
             win.close()
         ok_button.clicked.connect(onOk)
-        ok_button.clicked.connect(
-            lambda: lab.setSweepValues(
-                gui_dev,
-                spin_start.value(),
-                spin_stop.value(),
-                spin_npts.value(),
-            )
-        )
 
         gui_dev._win_sweep = win
-        win.focus()
+        win.show()
 
 
 ####################
@@ -239,7 +196,7 @@ class ami430(Default):
             gui_instr.ph_instr = instr
             del gui_instr._vec_loading_thread
             win.close()
-            lab.loadGuiDevices(gui_instr)
+            #lab.loadGuiDevices(gui_instr)
 
         # signal when an axis is loaded
         gui_instr.magnets = {'magnet_x':None, 'magnet_y':None, 'magnet_z':None}
@@ -272,11 +229,6 @@ class ami430(Default):
         btn_load_all.clicked.connect(onLoadAll)
 
         win.focus()
-
-    @staticmethod
-    def config(lab, gui_instr):
-        if gui_instr.ph_instr == None: return
-        ami430.sweep(lab, gui_instr.getGuiDevice('ramp_to_index'))
 
     @staticmethod
     def sweep(lab, gui_dev):

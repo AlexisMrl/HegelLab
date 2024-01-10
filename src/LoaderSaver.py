@@ -30,6 +30,8 @@ class LoaderSaver:
             path = QFileDialog.getSaveFileName(self.lab.view_rack, 'Save file', '.', "JSON files (*.json)")[0]
         if path == "":
             return None
+        if not path.endswith(".json"):
+            path += ".json"
 
         list_of_dict = []
         for gui_instr in gui_instruments:
@@ -50,7 +52,7 @@ class LoaderSaver:
         win.resize(800, 600)
         textedit = QTextEdit()
         textedit.setReadOnly(True)
-        textedit.setFont(QFont("Courier New", 12))
+        textedit.setFont(QFont("Courier New", 11))
         button = QPushButton("Copy to clipboard")
         button.clicked.connect(lambda: QApplication.clipboard().setText(textedit.toPlainText()))
         vbox = QVBoxLayout()

@@ -6,49 +6,95 @@ import numpy as np
 from scipy.ndimage import gaussian_filter1d
 from pyHegel.gui import ScientificSpinBox
 
+class DisplaySweepData:
+    def __init__(self):
+        self.filter_state = "no" # "dx", "dy"
+        self.sigma = 1
+        self.resetData()
+    
+    def resetData(self):
+        self.raw_data = np.full((11, 11), np.nan)
+        self.data = np.full((11, 11), np.nan)
+        self.image_rect = (-5, -5, 11, 11) # x, y, w, h
+        self.sweep_range = [[0, 0, 1], [0, 1, 1]] # [[start1, stop1, nbpts1], [..2]]
+        self.label_x = "x"
+        self.label_y = "y"
+        self.label_out = "out"
+        self.transpose = False
+    
+    def makeImageRect(self):
+        start1, stop1, nbpts1 = self.sweep_range[0]
+        start2, stop2, nbpts2 = self.sweep_range[1]
+        self.image_rect = [min(start1, stop1), min(start2, stop2), np.abs(stop1-start1), np.abs(stop2-start2)]
+    
+    def filteredData(self, gui_dev):
+        if gui_dev is not None:
+            self.raw_data = gui_dev.values
+            self.label_out = gui_dev.getDisplayName("short", with_instr=True)
+        else:
+            self.label_out = "out"
+
+        axis = {"dx": 0, "dy": 1}.get(self.filter_state, -1)
+        if axis == -1 or self.raw_data.shape[axis] == 1:
+            self.data = np.copy(self.raw_data)
+        else:
+            self.data = gaussian_filter1d(self.raw_data, sigma=self.sigma, axis=axis, mode="nearest")
+            self.data = np.gradient(self.data, axis=axis)
+        if self.transpose:
+            self.data = np.transpose(self.data)
+        return self.data
+
 
 class DisplayWidget(QMainWindow):
-    def initVars(self):
-        self.filter_state = ["no", 1]  # (<'no', 'dx', 'dy'>, sigma)
-        # self.raw_data = np.random.rand(10, 10)  # raw data, before derivative and transpose
-        self.raw_data = np.full(
-            (10, 10), np.nan
-        )  # raw data, before derivative and transpose
-        self.image_rect = (-5, -5, 10, 10)  # rectangle for transform: x, y, w, h
-        self.axes = {"x": np.linspace(-5, 5, 10), "y": np.linspace(-5, 5, 10)}
-        self.labels = {"x": "x sweep", "y": "y sweep", "out": "out"}
-        self.int_color = 0  # color for targets
-
     def __init__(self, view):
-        super(DisplayWidget, self).__init__()
+        super().__init__()
         uic.loadUi("ui/DisplayWindow.ui", self)
         self.view = view
+        self.disp_data = DisplaySweepData()
+        self.disable = False # True when sweeping more than 2 device
+        self.live_trace = True
+        self.last_mouse_pos = QPoint(0,0)
+        self.target_color = 0
+        self.target = []
 
-        # -- setting up the window --
+        # -- plot things --
         # image
-        self.main = self.graph.addPlot(row=0, col=0)
+        self.main = self.graph.addPlot(row=0, col=0, colspan=2)
         self.main.showGrid(x=True, y=True)
         self.main.hideButtons()
         self.image = pg.ImageItem()
         self.main.addItem(self.image)
-
+        # histogram lut
+        self.hist = pg.HistogramLUTItem(image=self.image)
+        self.hist.setImageItem(self.image)
+        self.hist.axis.setWidth(50)
+        self.hist.autoHistogramRange()
+        self.hist.gradient.sigGradientChanged.connect(lambda: self.hist.gradient.showTicks(False))
+        self.hist.gradient.setColorMap(pg.colormap.get('CET-D1'))
+        self.graph.addItem(self.hist, row=0, col=2)
         # vertical plot
-        self.vertical = self.graph.addPlot(row=0, col=1)
+        self.vertical = self.graph.addPlot(row=1, col=1)
         self.vertical.hideButtons()
-        self.vertical.setMaximumWidth(200)
+        self.vertical.getAxis('left').setWidth(50)
+        self.vPlot = self.vertical.plot()
         # horizontal plot
         self.horizontal = self.graph.addPlot(row=1, col=0)
         self.horizontal.hideButtons()
-        self.horizontal.setMaximumHeight(200)
+        self.horizontal.getAxis('left').setWidth(50)
+        self.hPlot = self.horizontal.plot()
         # plot links
-        self.vertical.setYLink(self.main)
-        self.horizontal.setXLink(self.main)
-        # color bar
-        self.bar = pg.ColorBarItem()
-        self.bar.rounding = 0.02
-        self.bar.setImageItem(self.image, insert_in=self.main)
+        #self.vertical.setYLink(self.main)
+        #self.horizontal.setXLink(self.main)
+        # cross hair
+        self.vLine = pg.InfiniteLine(angle=90, movable=False)
+        self.hLine = pg.InfiniteLine(angle=0, movable=False)
+        self.main.addItem(self.vLine, ignoreBounds=True)
+        self.main.addItem(self.hLine, ignoreBounds=True)
+        self.main.scene().sigMouseMoved.connect(self.onMouseMoved)
+        # targets
+        self.targets = []
 
-        # -- toolbars
+        # -- toolbars --
         self.toolBar2 = QToolBar()
         self.addToolBarBreak()
         self.addToolBar(self.toolBar2)
@@ -64,333 +110,199 @@ class DisplayWidget(QMainWindow):
         self.toolBar.addWidget(self.cb_out)
         self.toolBar.addSeparator()
         # tb1 button reset view:
-        self.btn_reset_view = self.toolBar.addAction("Reset view")
-        self.btn_reset_view.triggered.connect(self.resetView)
+        self.btn_reset_view = self.toolBar.addAction("Recenter")
+        self.btn_reset_view.triggered.connect(self.recenter)
         # reset cbar
-        self.btn_reset_bar = self.toolBar.addAction("Reset cbar")
-        self.btn_reset_bar.triggered.connect(self.updateBar)
-        # transpose:
-        self.btn_transpose = self.toolBar.addAction("Transpose")
-        self.btn_transpose.setCheckable(True)
-        self.btn_transpose.setChecked(False)
-        self.btn_transpose.triggered.connect(self.onTranspose)
-        self.btn_transpose.setVisible(False) # TODO: transpose not implemented yet
-
+        self.btn_reset_bar = self.toolBar.addAction("Reset bar")
+        self.btn_reset_bar.triggered.connect(self.resetHist)
         # tb2 combobox derivative:
         self.toolBar2.addWidget(QLabel("Derivative:"))
         self.cb_derive = QComboBox()
         self.cb_derive.addItem("No derivative", "no")
         self.cb_derive.addItem("df/dx", "dx")
         self.cb_derive.addItem("df/dy", "dy")
-        self.cb_derive.currentIndexChanged.connect(
-            lambda: self.updateFilter(filter_=self.cb_derive.currentData())
-        )
+        self.cb_derive.currentIndexChanged.connect(self.onFilterChanged)
         self.toolBar2.addWidget(self.cb_derive)
         # sigma
-        self.toolBar2.addWidget(QLabel("Sigma:"))
+        self.toolBar2.addWidget(QLabel(" Sigma:"))
         self.sb_sigma = ScientificSpinBox.PyScientificSpinBox()
         self.sb_sigma.setRange(1, 100)
         self.toolBar2.addWidget(self.sb_sigma)
-        self.sb_sigma.valueChanged.connect(
-            lambda: self.updateFilter(sigma=self.sb_sigma.value())
-        )
-        # crosshair/mouse
-        self.toolBar2.addSeparator()
-        self.btn_add_crosshair = self.toolBar2.addAction("Add crosshair")
+        self.sb_sigma.valueChanged.connect(self.onFilterChanged)
 
-        def onAddCrosshair():
-            if len(self.targets) < 5:
-                self.targets.append(Target(self))
+        ## crosshair/mouse
+        self.targets = []
+        self._updateImage()
+    
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Space:
+            nb_targets = len(self.targets)
+            for t in self.targets:
+                if t.mouseHovering:
+                    t.onRemove()
+                    self.targets.remove(t)
+                    break
+            if nb_targets == len(self.targets):
+                self.addTarget()
+        event.accept()
 
-        self.btn_add_crosshair.triggered.connect(onAddCrosshair)
-        self.btn_remove_crosshair = self.toolBar2.addAction("Remove crosshair")
+    def onMouseMoved(self, pos):
+        if self.main.sceneBoundingRect().contains(pos):
+            self.last_mouse_pos = pos
+            mousePoint = self.main.vb.mapSceneToView(pos)
+            self.vLine.setPos(mousePoint.x())
+            self.hLine.setPos(mousePoint.y())
+            if self.live_trace:
+                self._plotTraces(self.hPlot, self.vPlot, mousePoint)
+            self.hLine.setVisible(self.live_trace)
+            self.hPlot.setVisible(self.live_trace)
+            self.vLine.setVisible(self.live_trace)
+            self.vPlot.setVisible(self.live_trace)
 
-        def onRemoveCrosshair():
-            if len(self.targets) > 1:
-                tgt = self.targets.pop()
-                tgt.remove()
 
-        self.btn_remove_crosshair.triggered.connect(onRemoveCrosshair)
-
-        # variables
-        self.initVars()
-        self.targets = [Target(self)]
-        self.drawRaw()
-        self.updateLabels()
-
-    # -- core functions --
-    def clear(self):
-        self.image.clear()
-        self.updateLabels(x="", y="", out="")
-        self.cb_out.clear()
-
-    def resetView(self):
+    def recenter(self):
         self.horizontal.autoRange()
         self.vertical.autoRange()
         self.main.autoRange(padding=0)
 
-    def drawRaw(self):
-        to_draw = self.raw_data.T if self.btn_transpose.isChecked() else self.raw_data
-        to_draw = self.filter_(to_draw, *self.filter_state)
-
-        self.image.setImage(to_draw, autoLevels=False)
-        self.image.setRect(self.image_rect)
-        self.updateBar()
-        self.updateTargets()
-
-    def drawSweep(self):
-        out_dev = self.cb_out.currentData()
-        if out_dev is None:
-            return
-        self.raw_data = out_dev.values
-        self.drawRaw()
-
-    def initSweep(self, out_devs, sweep_devs):
-        self.clear()
-        self.swept_devs = sweep_devs
-        # set labels and init axis for side graphs and set target and image rect
-
-        if len(sweep_devs) == 1:
-            x_for_horiz = np.linspace(
-                sweep_devs[0].sweep[0], sweep_devs[0].sweep[1], sweep_devs[0].sweep[2]
-            )
-            if sweep_devs[0].sweep[1] < sweep_devs[0].sweep[0]:
-                x_for_horiz = np.flip(x_for_horiz)  # reversed sweep
-            y_for_vert = np.array([0])
-            # rectangle for transform: x, y, w, h
-            self.image_rect = (
-                min(sweep_devs[0].sweep[:2]),
-                0,
-                np.abs(sweep_devs[0].sweep[1] - sweep_devs[0].sweep[0]),
-                1,
-            )
-            self.updateLabels(
-                x=sweep_devs[0].getDisplayName("short"),
-                out=out_devs[0].getDisplayName("short"),
-            )
-
-        elif len(sweep_devs) == 2:
-            self.main.setLabel("left", sweep_devs[1].getDisplayName("short"))
-            self.vertical.setLabel("left", sweep_devs[1].getDisplayName("short"))
-            x_for_horiz = np.linspace(
-                sweep_devs[0].sweep[0], sweep_devs[0].sweep[1], sweep_devs[0].sweep[2]
-            )
-            y_for_vert = np.linspace(
-                sweep_devs[1].sweep[0], sweep_devs[1].sweep[1], sweep_devs[1].sweep[2]
-            )
-            if sweep_devs[0].sweep[1] < sweep_devs[0].sweep[0]:
-                x_for_horiz = np.flip(x_for_horiz)
-            if sweep_devs[1].sweep[1] < sweep_devs[1].sweep[0]:
-                y_for_vert = np.flip(y_for_vert)
-            # rectangle for transform: x, y, w, h
-            self.image_rect = (
-                min(sweep_devs[0].sweep[:2]),
-                min(sweep_devs[1].sweep[:2]),
-                np.abs(sweep_devs[0].sweep[1] - sweep_devs[0].sweep[0]),
-                np.abs(sweep_devs[1].sweep[1] - sweep_devs[1].sweep[0]),
-            )
-            self.updateLabels(
-                x=sweep_devs[0].getDisplayName("short"),
-                y=sweep_devs[1].getDisplayName("short"),
-                out=out_devs[0].getDisplayName("short"),
-            )
-
-        self.axes = {"x": x_for_horiz, "y": y_for_vert}
-        self.drawRaw()
-        self.resetView()
-        self.targets_reset()
-
-        # set cb_out
-        self.cb_out.currentIndexChanged.disconnect(self.onCbOutChanged)
-        for dev in out_devs:
-            self.cb_out.addItem(dev.getDisplayName("short"), dev)
-        self.cb_out.currentIndexChanged.connect(self.onCbOutChanged)
-        self.cb_out.setCurrentIndex(0)
-
-    # -- connected to signals --
-
-    #    def onTargetMove(self, pos):
-    #        x, y = pos.x(), pos.y()
-    #        self.vline_main.setPos(x); self.hline_main.setPos(y)
-    #        self.vline.setPos(x); self.hline.setPos(y)
-    #        if self.image.image is None: return
-    #        self.target_px_x, self.target_px_y = self.coordToPixel(x, y, self.image.image, self.image_rect)
-    #        self.updateSideGraphs()
-
-    def updateLabels(self, x=None, y=None, out=None):
-        if x:
-            self.labels["x"] = x
-        if y:
-            self.labels["y"] = y
-        if out:
-            self.labels["out"] = out
-        self.main.setLabel("bottom", self.labels["x"])
-        self.horizontal.setLabel("bottom", self.labels["x"])
-        self.main.setLabel("left", self.labels["y"])
-        self.vertical.setLabel("left", self.labels["y"])
-        self.horizontal.setLabel("left", self.labels["out"])
-        self.vertical.setLabel("bottom", self.labels["out"])
-        self.bar.setLabel("left", self.labels["out"])
-
-    def updateBar(self):
-        data = self.image.image
-        if data is None:
-            return
-        if np.isnan(data).all():
-            return
+    def resetHist(self):
+        data = self.disp_data.data
+        if np.all(np.isnan(data)): return
         mini, maxi = np.nanmin(data), np.nanmax(data)
-        self.bar.setLevels((mini, maxi))
-    
-    def updateFilter(self, filter_=None, sigma=None):
-        if filter_:
-            self.filter_state[0] = filter_
-        if sigma:
-            self.filter_state[1] = sigma
-        self.drawRaw()
+        self.hist.setLevels(mini, maxi)
+        self.hist.vb.autoRange()
 
-    def onTranspose(self, boo):
-        self.updateLabels(
-            x=self.labels["y"], y=self.labels["x"], out=self.labels["out"]
-        )
-        self.image_rect = (
-            self.image_rect[1],
-            self.image_rect[0],
-            self.image_rect[3],
-            self.image_rect[2],
-        )
-        self.targets_reset()
-        self.drawRaw()
-        self.resetView()
+    def onTranspose(self):
+        self.disp_data.transpose = not self.disp_data.transpose
+        self.disp_data.label_x, self.disp_data.label_y = self.disp_data.label_y, self.disp_data.label_x
+        self._updateImage()
 
     def onCbOutChanged(self):
-        out_dev = self.cb_out.currentData()
-        if out_dev is None:
+        self._updateImage()
+        self.resetHist()
+    
+    def onFilterChanged(self):
+        self.disp_data.filter_state = self.cb_derive.currentData()
+        self.disp_data.sigma = self.sb_sigma.value()
+        self._updateImage()
+        self.resetHist()
+    
+    def addTarget(self):
+        x, y = self.vLine.pos().x(), self.hLine.pos().y()
+        self.targets.append(Target(self, (x, y)))
+
+    def removeAllTargets(self):
+        [t.onRemove() for t in self.targets]
+        self.targets.clear()
+
+    def _plotTraces(self, h_plot, v_plot, coord):
+        def _coordToIndexes(coord):
+            image_rect = self.disp_data.image_rect
+            raw_data = self.disp_data.raw_data
+            x_index = int((coord.x() - image_rect[0]) / (image_rect[2] / raw_data.shape[0]))
+            y_index = int((coord.y() - image_rect[1]) / (image_rect[3] / raw_data.shape[1]))
+            x_index = min(x_index, raw_data.shape[0]-1); y_index = min(y_index, raw_data.shape[1]-1)
+            x_index = max(x_index, 0);                   y_index = max(y_index, 0)
+            return x_index, y_index
+        x, y = _coordToIndexes(coord)
+        horiz_trace = self.disp_data.data[:, y]
+        vert_trace = self.disp_data.data[x]
+        self.horiz_trace = horiz_trace
+        self.vert_trace = vert_trace
+        h_plot.setData(x=np.linspace(*self.disp_data.sweep_range[0]), y=horiz_trace)
+        if len(np.unique(horiz_trace)) > 2: # autorange only if non-nan val >= 2
+            self.horizontal.autoRange()
+        #v_plot.setData(y=vert_trace)
+        v_plot.setData(x=np.linspace(*self.disp_data.sweep_range[1]), y=vert_trace)
+        if len(np.unique(vert_trace)) > 2:
+            self.vertical.autoRange()
+
+    def _updateImage(self):
+        gui_dev = self.cb_out.currentData()
+        to_display = self.disp_data.filteredData(gui_dev)
+        if not np.all(np.isnan(to_display)):
+            self.image.setImage(to_display, autoLevels=False)
+            self.image.setRect(self.disp_data.image_rect)
+
+        self._setLabels()
+        self.onMouseMoved(self.last_mouse_pos)
+        [t.onTargetMove() for t in self.targets]
+
+    def _setLabels(self):
+        new_lbls = [self.disp_data.label_x, self.disp_data.label_y, self.disp_data.label_out]
+        axes_x = [self.main.getAxis("bottom"), self.horizontal.getAxis("bottom")]
+        axes_y = [self.main.getAxis("left"), self.vertical.getAxis("bottom")]
+        axes_out = [self.horizontal.getAxis("left"), self.vertical.getAxis("left")]
+        #hist.getAxis("left", name) # must investigate how to put a label on histogram/gradient
+        for new_lbl, axes in zip(new_lbls, [axes_x, axes_y, axes_out]):
+            [ax.setLabel(new_lbl) for ax in axes]
+
+
+    # -- called by DisplayWindow --
+    def initSweep(self, out_devs, sweep_devs):
+        # set labels, cb and range
+
+        self.disp_data.resetData()
+        self.disable = False
+        self.removeAllTargets()
+
+        if len(sweep_devs) > 2:
+            self.disable = True
             return
-        self.updateLabels(out=out_dev.getDisplayName("short"))
-        self.drawSweep()
+        
+        gui_dev1 = sweep_devs[0]
+        start1, stop1, nbpts1 = gui_dev1.sweep
+        self.disp_data.sweep_range[0] = gui_dev1.sweep
+        self.disp_data.label_x = gui_dev1.getDisplayName("short", with_instr=True)
+        
+        if len(sweep_devs) == 2:
+            gui_dev2 = sweep_devs[1]
+            start2, stop2, nbpts2 = gui_dev2.sweep
+            self.disp_data.label_y = gui_dev2.getDisplayName("short", with_instr=True)
+            self.disp_data.sweep_range[1] = gui_dev2.sweep
+        
+        self.disp_data.makeImageRect()
+        self.hPlot.clear()
+        self.vPlot.clear()
+        self.image.clear()
+        self.cb_out.clear()
 
-    # -- targets --
-    def updateTargets(self):
-        for target in self.targets:
-            target.update()
-
-    def targets_toggleLines(self, boo):
-        for target in self.targets:
-            target.vline.setVisible(boo)
-            target.hline.setVisible(boo)
-            target.label.setVisible(boo)
-
-    def targets_reset(self):
-        # reset targets to center of image_rect
-        center = (
-            self.image_rect[0] + self.image_rect[2] / 2,
-            self.image_rect[1] + self.image_rect[3] / 2,
-        )
-        for target in self.targets:
-            target.target.setPos(*center)
-
-    # -- utils (no self) --
-
-    def filter_(self, data, axis, sigma):
-        axis = {"dx": 0, "dy": 1}.get(axis, -1)
-        if axis == -1 or data.shape[axis] == 1:
-            return data
-        data = gaussian_filter1d(data, sigma=sigma, axis=axis, mode="nearest")
-        return np.gradient(data, axis=axis)
+        for gui_dev in out_devs:
+            self.cb_out.addItem(gui_dev.getDisplayName("short", with_instr=True), gui_dev)
+        self.cb_out.setCurrentIndex(0)
+    
+        self._updateImage()
+    
+    def progressSweep(self, sweep_status):
+        self._updateImage()
+        current_pts = sweep_status.iteration[0]
+        if current_pts == 1:
+            self.recenter()
 
 
-class Target:
-    def __init__(self, parent):
+class Target(pg.TargetItem):
+    def __init__(self, parent, pos):
         self.parent = parent
+        self.color = pg.intColor(self.parent.target_color)
+        self.parent.target_color += 1
 
-        self.color = pg.intColor(self.parent.int_color)
-        self.parent.int_color += 1
+        super().__init__(pos, pen=pg.mkPen(self.color, width=1))
+        self.setMouseHover(True)
 
-        self.target = pg.TargetItem(
-            (0, 0), symbol="crosshair", pen=pg.mkPen(self.color, width=1)
-        )
-        self.label = pg.TargetLabel(
-            self.target, text="", color=self.color, offset=(10, 10)
-        )
-        self.vline = pg.InfiniteLine(
-            angle=90, movable=False, pen=pg.mkPen(self.color, width=2)
-        )
-        self.hline = pg.InfiniteLine(
-            angle=0, movable=False, pen=pg.mkPen(self.color, width=2)
-        )
+        self.hPlot = self.parent.horizontal.plot()
+        self.hPlot.setPen(pg.mkPen(self.color))
+        self.vPlot = self.parent.vertical.plot()
+        self.vPlot.setPen(pg.mkPen(self.color))
 
-        self.horizontal = self.parent.horizontal.plot()
-        self.horizontal.setPen(pg.mkPen(self.color, width=1))
-        self.vertical = self.parent.vertical.plot()
-        self.vertical.setPen(pg.mkPen(self.color, width=1))
+        self.sigPositionChanged.connect(self.onTargetMove)
+        self.onTargetMove()
+        parent.main.addItem(self)
 
-        self.target.setZValue(10)
-        self.vline.setZValue(10)
-        self.hline.setZValue(10)
-        self.target.sigPositionChanged.connect(self.onTargetMove)
-        self.onTargetMove(QPoint(0, 0))
+    def onRemove(self):
+        self.parent.main.removeItem(self)
+        self.parent.horizontal.removeItem(self.hPlot)
+        self.parent.vertical.removeItem(self.vPlot)
 
-        parent.main.addItem(self.target)
-        parent.main.addItem(self.vline)
-        parent.main.addItem(self.hline)
-
-    def remove(self):
-        self.parent.int_color -= 1
-        self.parent.main.removeItem(self.target)
-        self.parent.main.removeItem(self.vline)
-        self.parent.main.removeItem(self.hline)
-        self.parent.horizontal.removeItem(self.horizontal)
-        self.parent.vertical.removeItem(self.vertical)
-
-    def _coordToPixel(self, image, image_rect):
-        x, y = self.target.pos().x(), self.target.pos().y()
-        x_index = int((x - image_rect[0]) / (image_rect[2] / image.shape[0]))
-        y_index = int((y - image_rect[1]) / (image_rect[3] / image.shape[1]))
-        if x_index > image.shape[0] - 1:
-            x_index = -1
-        if y_index > image.shape[1] - 1:
-            y_index = -1
-        if x_index < 0:
-            x_index = -1
-        if y_index < 0:
-            y_index = -1
-        return x_index, y_index
-
-    def onTargetMove(self, pos):
-        self.vline.setPos(pos.x())
-        self.hline.setPos(pos.y())
-        if self.parent.image.image is None:
-            return
-        self.update()
-
-    def update(self):
-        # update label and traces
-        x, y = self._coordToPixel(self.parent.image.image, self.parent.image_rect)
-        self._updateLabel(x, y)
-        self._updateTraces(x, y)
-
-    def _updateLabel(self, x, y):
-        if x == -1 or y == -1:
-            self.label.setText("")
-            return
-        string = str(self.parent.image.image[x, y])
-        # self.label.setText(string if string != 'nan' else '')
-        self.label.setText(string)
-
-    def _updateTraces(self, x, y):
-        if x != -1:
-            data_col = self.parent.image.image[x]
-            if data_col.shape[0] == self.parent.axes["y"].shape[0]:
-                self.vertical.setData(data_col, self.parent.axes["y"])
-            mi, ma = min(data_col), max(data_col)
-            #print("x", mi,ma)
-            #if str(mi) != 'nan' and str(ma) != 'nan':
-            #   self.parent.vertical.setXRange(mi, ma)
-        if y != -1:
-            data_row = self.parent.image.image[:, y]
-            if data_row.shape[0] == self.parent.axes["x"].shape[0]:
-                self.horizontal.setData(self.parent.axes["x"], data_row)
-            mi, ma = min(data_row), max(data_row)
-            #print("y", mi,ma)
-            #f str(mi) != 'nan' and str(ma) != 'nan':
-            #   self.parent.horizontal.setYRange(mi, ma)
+    def onTargetMove(self, pos=None):
+        if pos is None: pos = self.pos()
+        self.parent._plotTraces(self.hPlot, self.vPlot, pos)

@@ -10,20 +10,70 @@ It is intended to be more structured than the original VsdVg, so adding feature 
 The objective is to make it as modular and versatile as possible.
 
 Main features (not much more than VsdVg, but cleaner and in py3):
-- load 'any' instrument from pyHegel while choosing its devices (with minimal prior work),
-- save and load your whole loaded instruments and custom devices to a file,
+- load 'any' instrument from pyHegel
+- edit devices (scale, ramp, limit, rename),
+- save and load instruments and custom devices,
 - responsive live display,
-- new: renaming devices.
+- live monitor.
+
+Missing for now:
+- virtual gates / feedback loop,
+- no support for multi output devices.
 
 
 Note: sweep and live view for higher than two swept devices is currently not supported.
 
+# Shortcuts
+
+| Global |   |
+|---|---|
+| j | down  |
+| k | up  |
+| l | unfold tree item  |
+| k | fold tree item  |
+| x | (in most places) remove item |
+
+| w, i | show rack (instrument) window  |
+| w, d | show display |
+| w, m | show monitor |
+| w, w | show main windows  |
+| t, o | focus out tree |
+| t, s | focus sweep tree |
+| t, l | focus log tree |
+| w, q | close current window  |
+
+| Rack |   |
+|---|---|
+| Shift+a | add instrument  |
+| Shift+l | load instrument |
+| Shift+e | edit instrument devices |
+| Shift+x | remove instrument  |
+| c | config device  |
+| r | rename device  |
+| m | toggle monitor device  |
+| o | toggle out device  |
+| g | toggle log device  |
+| s | toggle sweep device  |
+| Space | get value |
+| Shift+Space  | set value  |
+
+| Display |   |
+|---|---|
+| Space | add/remove fixed target  |
+
+| Monitor |   |
+|---|---|
+| - | decrease interval  |
+| + | increase instrument |
+| left arrow | decrease history size |
+| right arrow | increase history size |
+
 # Packages
-Need a Python3 installation of PyHegel and the package `pyqtgraph` in version `>=0.12.3`.
+Need python in version `>=3.8`, an installation of PyHegel and the package `pyqtgraph` in version `>=0.12.3`.
 
 # Installation (wip)
 
-Installation procecure python 3, PyHegel and HegelLab:
+Installation procecure (the whole thing: python3, PyHegel and HegelLab):
 ```py
 # conda create and install packages:
 conda create -n py311 -c conda-forge python=3.11 ipython numpy scipy pyqt matplotlib pyserial pythonnet pypdf2 pytz pyqtgraph=0.13.1 pyvisa

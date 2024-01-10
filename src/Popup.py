@@ -1,13 +1,16 @@
 from PyQt5.QtWidgets import QMessageBox, QWidget
 from PyQt5 import QtGui
-
+import traceback
 
 class Popup:
     # This class is used to manage popup and errors.
     def __init__(self):
         self.win = QWidget()
-
-    def _popError(self, win_type, title, message):
+    
+    def _excToStr(self, exception):
+        return "".join(traceback.format_tb(exception.__traceback__))
+    
+    def _popError(self, win_type, title, message, details):
         # pop an error window
         # win_type:
         #   QMessageBox.Critical
@@ -16,124 +19,79 @@ class Popup:
         #   QMessageBox.Warning
         msg = QMessageBox(win_type, title, message)
         msg.setWindowIcon(QtGui.QIcon("resources/favicon/favicon.png"))
+        if details: msg.setDetailedText(details)
         msg.exec_()
-
-    def _popErrorWithDetails(self, win_type, title, message, details):
-        # pop an error window with details
-        msg = QMessageBox(win_type, title, message)
-        msg.setDetailedText(details)
-        msg.setWindowIcon(QtGui.QIcon("resources/favicon/favicon.png"))
-        msg.exec_()
+    
+    def _popErrorC(self, title, message, detail=None):
+        self._popError(QMessageBox.Critical, title, message, detail)
+    def _popErrorW(self, title, message, detail=None):
+        self._popError(QMessageBox.Warning, title, message, detail)
+    def _popErrorI(self, title, message, detail=None):
+        self._popError(QMessageBox.Information, title, message, detail)
+    def _popErrorQ(self, title, message, detail=None):
+        self._popError(QMessageBox.Question, title, message, detail)
 
     def sweepMissingDevParameter(self):
-        self._popError(
-            QMessageBox.Warning, "Warning", "A device is missing its sweep parameters"
-        )
-        return
+        self._popErrorW("Warning", "A device is missing its sweep parameters")
 
     def sweepNoDevice(self):
-        self._popError(QMessageBox.Warning, "Warning", "No device is set to sweep")
-        return
+        self._popErrorW("Warning", "No device is set to sweep")
 
     def sweepZeroPoints(self):
-        self._popError(
-            QMessageBox.Warning, "Warning", "A device is set to sweep 0 points"
-        )
-        return
+        self._popError("Warning", "A device is set to sweep 0 points")
 
     def sweepStartStopEqual(self):
-        self._popError(
-            QMessageBox.Warning,
-            "Warning",
-            "A device is set to sweep from a value to the same value",
-        )
-        return
+        self._popError("Warning", "A device is set to sweep from a value to the same value",)
 
-    def instrLoadError(self, exception, traceback):
-        self._popErrorWithDetails(
-            QMessageBox.Critical,
-            "Error",
+    def instrLoadError(self, exception):
+        self._popErrorC("Error",
             "Error while loading instrument: " + str(exception),
-            traceback,
-        )
-        return
+            self._excToStr(exception))
 
-    def devLoadError(self, exception, traceback):
-        self._popErrorWithDetails(
-            QMessageBox.Critical,
-            "Error",
-            "Error while loading device: "
-            + str(exception)
-            + "\nThis device will not be loaded.",
-            traceback,
-        )
-        return
+    def devLoadError(self, exception):
+        self._popErrorC("Error",
+            f"Error while loading device: {str(exception)}\nThis device will not be loaded.",
+            self._excToStr(exception))
     
     def devRampZero(self):
-        self._popError(QMessageBox.Warning, "Warning", "Ramp rate cannot be 0.")
+        self._popErrorW("Warning", "Ramp rate cannot be 0.")
 
     def devScaleZero(self):
-        self._popError(QMessageBox.Warning, "Warning", "Scale factor cannot be 0.")
+        self._popErrorW("Warning", "Scale factor cannot be 0.")
     
-    def devExtraArgsEvalFail(self, exception, traceback):
-        self._popError(
-            QMessageBox.Warning,
-            "Warning",
-            """Fail to understand keywords arguments for device. Keeping the old ones (if any).\n
+    def devExtraArgsEvalFail(self):
+        self._popErrorW("Warning",
+            """Fail to understand keywords arguments for device.\n
             The string must be valid for: `dict(eval(string))`.
-            """
-        )
-        return
+            """)
 
+    def devLoadLogicalError(self, exception):
+        self._popErrorC("Error",
+            f"Error while loading logical device: {str(exception)}\nThe base device is still loaded.",
+            self._excToStr(exception))
 
-
-    def devLoadLogicalError(self, exception, traceback):
-        self._popErrorWithDetails(
-            QMessageBox.Critical,
-            "Error",
-            "Error while loading logical device: "
-            + str(exception)
-            + "\nThe base device is still loaded.",
-            traceback,
-        )
-        return
-
-    def sweepThreadError(self, exception, traceback):
-        self._popErrorWithDetails(
-            QMessageBox.Critical,
-            "Sweep error",
+    def sweepThreadError(self, exception):
+        self._popErrorC("Sweep error",
             "Error from pyHegel thread while sweeping: " + str(exception),
-            traceback,
-        )
-        return
+            self._excToStr(exception))
 
-    def setValueError(self, exception, traceback):
-        self._popErrorWithDetails(
-            QMessageBox.Warning,
-            "Error",
+    def setValueError(self, exception):
+        self._popErrorW("Error",
             "Error while setting value: " + str(exception),
-            traceback,
-        )
-        return
+            self._excToStr(exception))
 
-    def getValueError(self, exception, traceback):
-        self._popErrorWithDetails(
-            QMessageBox.Warning,
-            "Error",
+    def getValueError(self, exception):
+        self._popErrorW("Error",
             "Error while getting value: " + str(exception),
-            traceback,
-        )
-        return
+            self._excToStr(exception))
 
     def devIsNeeded(self):
-        self._popError(
-            QMessageBox.Warning,
-            "Warning",
-            "This device is needed for another device. Cannot remove it.",
-        )
-        return
+        self._popErrorW("Warning",
+            "This device is needed for another device. Cannot remove it.")
 
-    # -- yes/no --
+
+    # -- YES/NO --
+
     def _popYesNo(self, title, message):
         # pop a yes/no window
         msg = QMessageBox()
@@ -148,9 +106,7 @@ class Popup:
         return self._popYesNo("No output device", "No output device is set. Continue?")
 
     def devNotLoaded(self):
-        return self._popYesNo(
-            "Device not loaded", "This device is not loaded. Continue?"
-        )
+        return self._popYesNo("Device not loaded", "This device is not loaded. Continue?")
 
     def askRemoveInstrument(self, nickname):
         msg = "Are you sure you want to remove " + nickname + "?"
@@ -160,15 +116,11 @@ class Popup:
         return self._popYesNo("Quit", "Are you sure you want to quit?")
 
     def notSettable(self):
-        return self._popYesNo(
-            "Not settable", "This device is detected as not settable. Try sweeping it anyway?"
-        )
+        return self._popYesNo("Not settable", "This device is detected as not settable. Try sweeping it anyway?")
 
     def notGettable(self):
-        return self._popYesNo(
-            "Not gettable", "This device is not gettable. Try as output device anyway?"
-        )
+        return self._popYesNo("Not gettable", "This device is not gettable. Try as output device anyway?")
 
     def askRemoveDevice(self, nickname):
-        msg = "Are you sure you want to remove " + nickname + "?"
+        msg = f"Are you sure you want to remove the device '{nickname}' ?"
         return self._popYesNo("Remove device", msg)
