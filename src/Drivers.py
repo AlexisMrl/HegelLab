@@ -3,7 +3,6 @@ from pyHegel import instruments, instruments_base
 from PyQt5 import QtGui, uic
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import (
-    QMainWindow,
     QWidget,
     QGridLayout,
     QLabel,
@@ -12,6 +11,7 @@ from PyQt5.QtWidgets import (
     QFormLayout,
     QLineEdit,
 )
+from widgets.WindowWidget import AltDragWindow
 
 ####################
 # Loading thread
@@ -85,7 +85,7 @@ class Default:
 
         # minimal window for defining sweep start, stop, step:
         display_name = gui_dev.getDisplayName("long")
-        win = QMainWindow()
+        win = AltDragWindow()
         win.setWindowTitle("Setup sweep " + display_name)
         win.setWindowIcon(QtGui.QIcon("resources/favicon/favicon.png"))
         wid = QWidget()
@@ -151,7 +151,7 @@ class ami430(Default):
         vec_ph_class = eval(gui_instr.ph_class)
         vec_instr_dict = gui_instr.instr_dict
 
-        win = QMainWindow()
+        win = AltDragWindow()
         win.setWindowIcon(QtGui.QIcon("resources/load.svg"))
         gui_instr._win = win # avoid garbage collector
         title = "Setup AMI430 vector - " + str(vec_nickname)
@@ -225,7 +225,7 @@ class ami430(Default):
         # to gui_dev.sweep = [start, stop, npts]
         vec = gui_dev.parent
 
-        win = QMainWindow()
+        win = AltDragWindow()
         uic.loadUi("ui/DriverMagnet.ui", win)
         win.setWindowIcon(QtGui.QIcon("resources/config.svg"))
         win.setWindowTitle("Setup ami")
@@ -295,7 +295,7 @@ class VirtualGates(Default):
 
     @staticmethod
     def load(gui_instr, lab):
-        win = QMainWindow()
+        win = AltDragWindow()
         uic.loadUi("ui/DriverVirtualGates.ui", win)
         
 

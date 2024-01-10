@@ -1,15 +1,22 @@
-import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtGui import QKeyEvent
 
 
 class AltDragWindow(QMainWindow):
+    
+    # class variable
+    lab = None
+
     def __init__(self):
         super().__init__()
 
         self.installEventFilter(self)
+        
 
     def eventFilter(self, obj, event):
+        
+        # alt+drag
         if event.type() == QEvent.MouseButtonPress:
             if event.button() == Qt.LeftButton:
                 modifiers = QApplication.keyboardModifiers()
@@ -32,4 +39,15 @@ class AltDragWindow(QMainWindow):
                 delattr(self, 'drag_start_position')
                 event.accept()
                 return True
+        
+        # hjkl
+        elif event.type() == QEvent.KeyPress:
+            key_event = QKeyEvent(event)
+            print(key_event.key())
+            # arrow:
+            if key_event.key() == Qt.Key_Left:
+                print("left")
+            elif key_event.key() == Qt.Key_Down:
+                print("down")
+
         return super().eventFilter(obj, event)

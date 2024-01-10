@@ -1,5 +1,4 @@
 from PyQt5.QtWidgets import (
-    QMainWindow,
     QTreeWidgetItem,
 )
 from PyQt5 import QtGui, uic
