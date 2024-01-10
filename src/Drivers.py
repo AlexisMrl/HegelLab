@@ -1,7 +1,7 @@
 from pyHegel.gui import ScientificSpinBox
 from pyHegel import instruments, instruments_base
 from PyQt5 import QtGui, uic
-from PyQt5.QtCore import QThread, pyqtSignal, Qt
+from PyQt5.QtCore import QThread, pyqtSignal, Qt, QEvent
 from PyQt5.QtWidgets import (
     QWidget,
     QGridLayout,
@@ -11,9 +11,11 @@ from PyQt5.QtWidgets import (
     QFormLayout,
     QLineEdit,
     QListWidget,
-    QListWidgetItem
+    QListWidgetItem,
+    QShortcut
 )
-from widgets.WindowWidget import AltDragWindow
+from widgets.WindowWidget import Window
+from widgets.TreeWidget import TreeWidget
 
 ####################
 # Loading thread
@@ -79,7 +81,7 @@ class Default:
     def config(lab, gui_instr):
         if gui_instr.ph_instr is None: return
 
-        win = AltDragWindow()
+        win = Window()
         wid = QWidget()
         win.setCentralWidget(wid)
         layout = QGridLayout()
@@ -88,6 +90,11 @@ class Default:
         # widgets
         lw = QListWidget()
         lw.setSelectionMode(2)
+            # remap j/k
+        short_j = QShortcut(QtGui.QKeySequence("j"), lw)
+        short_k = QShortcut(QtGui.QKeySequence("k"), lw)
+        short_j.activated.connect(lambda: lw.keyPressEvent(QtGui.QKeyEvent(QEvent.KeyPress, Qt.Key_Down, Qt.NoModifier)))
+        short_k.activated.connect(lambda: lw.keyPressEvent(QtGui.QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)))
         dev_list = lab.model.getDevicesList(gui_instr.ph_instr)
         #already_loaded_dev = [gui_dev.ph_name for gui_dev in gui_instr.gui_devices]
         lw.addItems(dev_list)
@@ -121,7 +128,7 @@ class Default:
 
         # minimal window for defining sweep start, stop, step:
         display_name = gui_dev.getDisplayName("long")
-        win = AltDragWindow()
+        win = Window()
         win.setWindowTitle("Setup sweep " + display_name)
         win.setWindowIcon(QtGui.QIcon("resources/favicon/favicon.png"))
         wid = QWidget()
@@ -173,6 +180,7 @@ class Default:
         spin_start.valueChanged.connect(updateStep)
         spin_stop.valueChanged.connect(updateStep)
         spin_npts.valueChanged.connect(updateStep)
+        updateStep()
 
         def onOk():
             win.close()
@@ -201,7 +209,7 @@ class ami430(Default):
         vec_ph_class = eval(gui_instr.ph_class)
         vec_instr_dict = gui_instr.instr_dict
 
-        win = AltDragWindow()
+        win = Window()
         win.setWindowIcon(QtGui.QIcon("resources/load.svg"))
         gui_instr._win = win # avoid garbage collector
         title = "Setup AMI430 vector - " + str(vec_nickname)
@@ -275,7 +283,7 @@ class ami430(Default):
         # to gui_dev.sweep = [start, stop, npts]
         vec = gui_dev.parent
 
-        win = AltDragWindow()
+        win = Window()
         uic.loadUi("ui/DriverMagnet.ui", win)
         win.setWindowIcon(QtGui.QIcon("resources/config.svg"))
         win.setWindowTitle("Setup ami")
@@ -345,7 +353,7 @@ class VirtualGates(Default):
 
     @staticmethod
     def load(gui_instr, lab):
-        win = AltDragWindow()
+        win = Window()
         uic.loadUi("ui/DriverVirtualGates.ui", win)
         
 

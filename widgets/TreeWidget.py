@@ -81,25 +81,37 @@ class TreeWidget(QTreeWidget):
             mime_data.setData("device-nickname", b_name)
         return mime_data
 
+    itemDropped = QtCore.pyqtSignal(object, int, QtCore.QMimeData)
     def dropMimeData(self, parent, row, data, action):
-        # what happens when the item is dropped
-        # implemented by children
-        pass
+        # emit signal when something is drop
+        self.itemDropped.emit(self, row, data)
+        return True
     
     def keyPressEvent(self, event):
-        # vim jkhl, g, G
+        # vim jkhl, d(own), u(p), g, G
         key = event.key()
+        def pressKey(key):
+            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier))
         if key == Qt.Key_J:
-            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Down, Qt.NoModifier))
+            pressKey(Qt.Key_Down)
         elif key == Qt.Key_K:
-            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier))
+            pressKey(Qt.Key_Up)
         elif key == Qt.Key_H:
-            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Left, Qt.NoModifier))
+            pressKey(Qt.Key_Left)
         elif key == Qt.Key_L:
-            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Right, Qt.NoModifier))
+            pressKey(Qt.Key_Right)
+        elif key == Qt.Key_D:
+            for _ in range(5):
+                pressKey(Qt.Key_Down)
+        elif key == Qt.Key_U:
+            for _ in range(5):
+                pressKey(Qt.Key_Up)
         elif key == Qt.Key_G:
-            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Home, Qt.NoModifier))
-        elif key == Qt.Key_G and event.modifiers() == Qt.ShiftModifier:
-            self.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_End, Qt.NoModifier))
+            if event.modifiers() == Qt.ShiftModifier:
+                pressKey(Qt.Key_End)
+            elif event.modifiers() == Qt.NoModifier:
+                pressKey(Qt.Key_Home)
+
+        
         else:
             super().keyPressEvent(event)

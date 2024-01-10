@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from pyHegel.gui import ScientificSpinBox
 
 from src.GuiInstrument import GuiDevice
-from widgets.WindowWidget import AltDragWindow
+from widgets.WindowWidget import Window
 
 from pyqtgraph.dockarea import DockArea, Dock
 from pyqtgraph.widgets import PlotWidget
@@ -74,7 +74,7 @@ class MonitorObj:
         self.spinbox.setValue(gui_dev.monitor_data[-1])
         self.lab.view_rack.gui_updateDeviceValue(gui_dev, gui_dev.monitor_data[-1])
 
-class MonitorWindow(AltDragWindow):
+class MonitorWindow(Window):
     def __init__(self, lab):
         super().__init__()
         self.lab = lab
@@ -88,13 +88,7 @@ class MonitorWindow(AltDragWindow):
         self.splitter.addWidget(self.dock_area)
         self.splitter.setSizes([300, 500])
         # tree:
-        def selectedGuiDev():
-            item = self.tree.selectedItem()
-            if not item: return
-            gui_dev = self.tree.getData(item, 0)
-            return gui_dev
-        # TODO: fix remove button
-        self.btn_remove.clicked.connect(lambda gui_dev=selectedGuiDev(): self.gui_removeDevice(gui_dev=gui_dev))
+        self.btn_remove.clicked.connect(self.gui_removeSelectedDevice)
         def onDrop(data):
             instr_nickname = str(data.data("instrument-nickname"), "utf-8")
             dev_nickname = str(data.data("device-nickname"), "utf-8")
@@ -131,11 +125,22 @@ class MonitorWindow(AltDragWindow):
         self.tree.setData(dev_item, monitor_obj, 1)
         self.tree.addTopLevelItem(dev_item)
         self.tree.setItemWidget(dev_item, 1, monitor_obj.spinbox)
+    
+    def removeGuiDev(self, gui_dev):
+        monitor_obj = self.monitors_dict.get(gui_dev, None)
+        if monitor_obj is None: return
+        monitor_obj.thread.terminate()
+        monitor_obj.dock.close()
+        self.tree.removeByData(gui_dev)
+        self.monitors_dict.pop(monitor_obj.gui_dev)
+    
+    def isMonitored(self, gui_dev):
+        return bool(self.monitors_dict.get(gui_dev, None))
         
 
     def gui_updateDeviceValue(self, gui_dev, value):
         # update the value of a device in the tree
-        monitor_obj = self.monitors_dict.get(gui_dev)
+        monitor_obj = self.monitors_dict.get(gui_dev, None)
         if monitor_obj is None: return
         spinbox = monitor_obj.spinbox
         if not isinstance(value, (float, int)):
@@ -152,11 +157,32 @@ class MonitorWindow(AltDragWindow):
         monitor_obj.dock.setTitle(new_nickname)
         dev_item = self.tree.findItemByData(monitor_obj)
         dev_item.setText(0, gui_dev.getDisplayName("short"))
+    
+    def gui_removeSelectedDevice(self):
+        item = self.tree.selectedItem()
+        if not item: return
+        gui_dev = self.tree.getData(item, 0)
+        self.removeGuiDev(gui_dev)
 
-    def gui_removeDevice(self, gui_dev):
-        monitor_obj = self.monitors_dict.get(gui_dev, None)
-        if monitor_obj is None: return
-        monitor_obj.thread.terminate()
-        monitor_obj.dock.close()
-        self.tree.removeByData(gui_dev)
-        self.monitors_dict.pop(monitor_obj.gui_dev)
+
+    # -- shortcuts
+    def initShortcuts(self):
+        super().initShortcuts()
+        self.short("x", self.gui_removeSelectedDevice)
+        self.short("y", self.short_yankGuiDev)
+        self.short("p", self.short_pasteGuiDev)
+    
+    def short_yankGuiDev(self):
+        item = self.tree.selectedItem()
+        if not item: return
+        gui_dev = self.tree.getData(item, 0)
+        Window.gui_dev_buffer = gui_dev
+    
+    def short_pasteGuiDev(self):
+        gui_dev = Window.gui_dev_buffer
+        if not gui_dev: return
+        self.addGuiDev(gui_dev)
+
+    def focusTree(self):
+        self.lab.showMonitor()
+        self.tree.setFocus(True)
