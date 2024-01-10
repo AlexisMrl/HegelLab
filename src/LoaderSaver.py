@@ -20,7 +20,7 @@ class LoaderSaver:
         if path is None or path == "":
             path = QFileDialog.getOpenFileName(self.lab.view_rack, 'Open file', '.', "JSON files (*.json)")[0]
         if path == "":
-            return None
+            return []
         with open(path) as json_file:
             data = json.load(json_file, object_pairs_hook=OrderedDict)
         instruments = data.get('instruments')

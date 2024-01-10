@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>271</width>
+    <width>294</width>
     <height>198</height>
    </rect>
   </property>
@@ -15,32 +15,21 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="6" column="0" colspan="2">
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QPushButton" name="pb_create">
-        <property name="text">
-         <string>Create</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pb_cancel">
-        <property name="text">
-         <string>Cancel</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item row="0" column="0">
+    <item row="1" column="0">
      <widget class="QCheckBox" name="cb_ramp">
       <property name="text">
        <string>Ramp (per sec)</string>
       </property>
      </widget>
     </item>
-    <item row="2" column="0">
+    <item row="1" column="1">
+     <widget class="PyScientificSpinBox" name="sb_ramp">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0">
      <widget class="QCheckBox" name="cb_scale">
       <property name="toolTip">
        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;On writing, it writes  basedev.get()*scale_factor&lt;/p&gt;&lt;p&gt;On reading it returns basedev.set(val/scale_factor)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -53,35 +42,14 @@
       </property>
      </widget>
     </item>
-    <item row="0" column="1">
-     <widget class="PyScientificSpinBox" name="sb_ramp">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="1">
-     <widget class="PyScientificSpinBox" name="sb_scale">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
     <item row="4" column="1">
-     <widget class="PyScientificSpinBox" name="sb_max">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="1">
      <widget class="PyScientificSpinBox" name="sb_min">
       <property name="enabled">
        <bool>true</bool>
       </property>
      </widget>
     </item>
-    <item row="3" column="0" rowspan="2">
+    <item row="4" column="0" rowspan="2">
      <layout class="QGridLayout" name="gridLayout_3">
       <item row="0" column="0">
        <widget class="QCheckBox" name="cb_limit">
@@ -111,6 +79,52 @@
        </widget>
       </item>
      </layout>
+    </item>
+    <item row="7" column="0" colspan="2">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QPushButton" name="pb_create">
+        <property name="text">
+         <string>Create</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pb_cancel">
+        <property name="text">
+         <string>Cancel</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="3" column="1">
+     <widget class="PyScientificSpinBox" name="sb_scale">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="1">
+     <widget class="PyScientificSpinBox" name="sb_max">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>kwargs:          dict(</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QLineEdit" name="le_kwargs">
+      <property name="placeholderText">
+       <string/>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>

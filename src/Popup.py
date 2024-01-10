@@ -49,12 +49,6 @@ class Popup:
         )
         return
 
-    def devAlreadyHere(self):
-        self._popError(
-            QMessageBox.Information, "Information", "This device is already in here"
-        )
-        return
-
     def instrLoadError(self, exception, traceback):
         self._popErrorWithDetails(
             QMessageBox.Critical,
@@ -74,6 +68,18 @@ class Popup:
             traceback,
         )
         return
+    
+    def devExtraArgsEvalFail(self, exception, traceback):
+        self._popError(
+            QMessageBox.Warning,
+            "Warning",
+            """Fail to understand keywords arguments for device. Keeping the old ones (if any).\n
+            The string must be valid for: `dict(eval(string))`.
+            """
+        )
+        return
+
+
 
     def devLoadLogicalError(self, exception, traceback):
         self._popErrorWithDetails(
