@@ -83,7 +83,7 @@ class GuiDevice:
         self.type = (None, None)  # (settable, gettable) = (T/F, T/F)
         
         self.logical_kwargs = {'scale': {}, 'ramp':{}, 'limit':{}}
-        self.logical_dev = None
+        self.logical_dev = None # limit(ramp(scale())))
 
         # not kept when saving
         self.ph_dev = None
@@ -100,6 +100,10 @@ class GuiDevice:
         # monitor
         # a np.array for when the device is monitored
         self.monitor_data = None
+
+        # set thread
+        # keep the thread use to set ph_dev value
+        self.set_thread = None
 
     def getPhDev(self, basedev=False):
         if self.logical_dev is not None and not basedev:

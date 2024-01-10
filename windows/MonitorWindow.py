@@ -127,6 +127,7 @@ class MonitorWindow(Window):
         self.tree.setItemWidget(dev_item, 1, monitor_obj.spinbox)
     
     def removeGuiDev(self, gui_dev):
+        # properly delete monitor of gui_dev
         monitor_obj = self.monitors_dict.get(gui_dev, None)
         if monitor_obj is None: return
         monitor_obj.thread.terminate()
@@ -162,6 +163,9 @@ class MonitorWindow(Window):
         item = self.tree.selectedItem()
         if not item: return
         gui_dev = self.tree.getData(item, 0)
+        self.gui_removeDevice(gui_dev)
+    
+    def gui_removeDevice(self, gui_dev):
         self.removeGuiDev(gui_dev)
 
 

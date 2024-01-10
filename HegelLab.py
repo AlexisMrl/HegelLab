@@ -56,28 +56,16 @@ class HegelLab:
     # -- GENERAL --
 
     def showMain(self):
-        self.view_main.setFocus(True)
-        self.view_main.activateWindow()
-        self.view_main.raise_()
-        self.view_main.show()
+        self.view_main.focus()
 
     def showRack(self):
-        self.view_rack.setFocus(True)
-        self.view_rack.activateWindow()
-        self.view_rack.raise_()
-        self.view_rack.show()
+        self.view_rack.focus()
 
     def showDisplay(self, dual=None):
-        self.view_display.setFocus(True)
-        self.view_display.activateWindow()
-        self.view_display.raise_()
-        self.view_display.show_(dual)
+        self.view_display.focus()
     
     def showMonitor(self):
-        self.view_monitor.setFocus(True)
-        self.view_monitor.activateWindow()
-        self.view_monitor.raise_()
-        self.view_monitor.show()
+        self.view_monitor.focus()
 
     def askClose(self, event):
         if self.pop.askQuit():
@@ -210,19 +198,20 @@ class HegelLab:
         for gui_dev in gui_instr.gui_devices:
             if gui_dev.isLoaded(): continue
             try:
-                gui_dev.ph_dev = self.model.getDevice(
-                    gui_instr.ph_instr, gui_dev.ph_name
-                )
+                ph_dev = self.model.getDevice(gui_instr.ph_instr, gui_dev.ph_name)
+                gui_dev.ph_dev = ph_dev
                 # type
-                detected_type = self.model.devType(gui_dev.ph_dev)
+                detected_type = self.model.devType(ph_dev)
                 type = [detected_type[0] if gui_dev.type[0] is None else gui_dev.type[0],
                         detected_type[1] if gui_dev.type[1] is None else gui_dev.type[1]]
                 gui_dev.type = tuple(type)
-                gui_dev.ph_choice = self.model.getChoices(gui_dev.ph_dev)
+                gui_dev.ph_choice = self.model.getChoices(ph_dev)
             except Exception as e:
                 tb_str = "".join(traceback.format_tb(e.__traceback__))
                 self.pop.devLoadError(e, tb_str)
                 continue
+
+
             # logical device
             self.loadGuiLogicalDevice(gui_dev)
 
@@ -241,14 +230,24 @@ class HegelLab:
 
     def loadGuiLogicalDevice(self, gui_dev):
         # try to build the logical device based on logical_kwargs
+        ramp_rate = gui_dev.logical_kwargs['ramp'].get('rate', -1)
+        if ramp_rate == 0:
+            self.pop.devRampZero()
+            return
+        scale_factor = gui_dev.logical_kwargs['scale'].get('factor', -1)
+        if scale_factor == 0:
+            self.pop.devScaleZero()
+            return
         try:
-            basedev = gui_dev.getPhDev(basedev=True)
-            gui_dev.logical_dev = self.model.makeLogicalDevice(basedev,
+            gui_dev.logical_dev = self.model.makeLogicalDevice(gui_dev,
                                                                gui_dev.logical_kwargs,
                                                                gui_dev.parent.ph_instr)
         except Exception as e:
             tb_str = "".join(traceback.format_tb(e.__traceback__))
             self.pop.devLoadLogicalError(e, tb_str)
+            return
+        self.view_rack.gui_updateGuiInstrument(gui_dev.parent)
+        self.view_rack.win_devconfig.close()
     
     def newDevicesFromRack(self, gui_instr, dev_dicts):
         # dev_dicts is a list of dict: [{ph_name:'dev1', ph_name:'dev2'...}]
@@ -294,7 +293,7 @@ class HegelLab:
 
     def setValue(self, gui_dev, val):
         # set the value of the GuiDevice and update the gui
-        self.model.setValue(gui_dev.getPhDev(), val)
+        self.model.setValue(gui_dev, val)
         self.view_rack.win_set.close()
     
     def setValueError(self, e):
@@ -516,7 +515,7 @@ if __name__ == "__main__":
     create_app = False
     app = None
     if len(sys.argv) > 1 and sys.argv[1] == "--with-app":
-        with_app = True
+        create_app = True
         QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
         QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
         app = QApplication([])
