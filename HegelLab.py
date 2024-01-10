@@ -4,12 +4,11 @@ import sys
 from PyQt5.QtWidgets import QApplication
 
 from windows import MainWindow, RackWindow, DisplayWindow, MonitorWindow
-from widgets import WindowWidget
-from src import LoaderSaver, Model, Popup, SweepThread, Shortcuts
+from src import LoaderSaver, Model, Popup, SweepThread, Drivers
 from src.GuiInstrument import GuiInstrument, GuiDevice
 from src.SweepIdxIter import IdxIter
 
-from src import Drivers # for eval
+from pyHegel import instruments # for eval
 
 import numpy as np
 import time
@@ -21,20 +20,17 @@ import os
 
 
 class HegelLab:
-    def __init__(self, app):
+    def __init__(self, app=None):
         self.app = app
-        WindowWidget.AltDragWindow.lab = self
-
         self.loader = LoaderSaver.LoaderSaver(self)
         self.pop = Popup.Popup()
-
-        self.model = Model.Model()
-
-        # views are windows
+        # model, views
+        self.model = Model.Model(self)
         self.view_main = MainWindow.MainWindow(self)
         self.view_rack = RackWindow.RackWindow(self)
         self.view_display = DisplayWindow.DisplayWindow(self)
         self.view_monitor = MonitorWindow.MonitorWindow(self)
+
 
         # data
         self.instr_list = self.loader.importFromJSON('default_instruments.json')
@@ -69,6 +65,7 @@ class HegelLab:
 
     def askClose(self, event):
         if self.pop.askQuit():
+            self.sweep_thread.terminate()
             self.view_main.close()
             self.view_rack.close()
             self.view_display.close()
@@ -112,7 +109,9 @@ class HegelLab:
         # build GuiInstrument and populate dvices, but no ph_instr nor ph_dev
         # loading is done in loadGuiInstrument.
         nickname = self._checkInstrNickname(nickname)
+        #ph_class = eval(instr_dict.get('ph_class'))
         ph_class = instr_dict.get('ph_class')
+        #driver = eval(instr_dict.get('driver', 'Drivers.Default'))
         driver = instr_dict.get('driver', 'Drivers.Default')
         # instanciate GuiInstrument
         gui_instr = GuiInstrument(nickname, ph_class, driver, addr, slot)
@@ -124,9 +123,35 @@ class HegelLab:
         for dev_dict in devices:
             ph_name = dev_dict.get('ph_name')
             nickname = dev_dict.get('nickname', ph_name)
-            nickname = self._checkDevNickname(nickname, gui_instr)
-            extra_args = dict(dev_dict.get('extra_args', {}))
+            nickname_multi = dev_dict.get('nickname_multi', [])
+            extra_args = dict(dev_dict.get('extra_args', {}))  #   <-, this one
+            extra_args_multi = dict(dev_dict.get('extra_args_multi', {}))
+
+            if extra_args_multi:
+                # extra_args_multi = {'arg_name1': [arg_dev1, arg_dev2, ...], ... }
+                # assume all lists have the same length
+                nb_of_dev = len(list(extra_args_multi.values())[0])
+                def gen_extra_args(i):
+                    extra_args_keys = list(extra_args_multi.keys())
+                    for key in extra_args_keys: 
+                        # addd keys to the original extra_args dict -^
+                        extra_args[key] = extra_args_multi[key][i]
+                    return extra_args
+                # recursive:
+                for i in range(nb_of_dev):
+                    if len(nickname_multi) == nb_of_dev:
+                        new_nickname = nickname_multi[i]
+                    else:
+                        new_nickname = nickname.replace("%i", str(i))
+                    dev_instr_dict = dict(dev_dict)
+                    dev_instr_dict.pop('extra_args_multi')
+                    dev_instr_dict['nickname'] = new_nickname
+                    dev_instr_dict['extra_args'] = gen_extra_args(i)
+                    self._instanciateGuiDevices(gui_instr, dict(devices=[dev_instr_dict]))
+                continue
+
             # instanciate GuiDevice
+            nickname = self._checkDevNickname(nickname, gui_instr)
             gui_dev = GuiDevice(nickname, ph_name, extra_args, parent=gui_instr)
             # type
             setget = dict(dev_dict.get('type', dict(set=None, get=None)))
@@ -150,7 +175,9 @@ class HegelLab:
         self._instanciateGuiDevices(gui_instr, instr_dict)
         self.gui_instruments.append(gui_instr)
         # loading (not sure, featurewise)
-        self.loadGuiInstrument(gui_instr)
+        auto_load = instr_dict.get('auto_load', False)
+        if auto_load:
+            self.loadGuiInstrument(gui_instr)
 
         # "signals"
         self.view_rack.gui_addGuiInstrument(gui_instr)
@@ -206,20 +233,28 @@ class HegelLab:
         # remove its devices in the trees:
         for dev in gui_instr.gui_devices:
             self.view_main.gui_removeDevice(dev)
-        self.view_rack.gui_removeGuiInstrument(gui_instr)
-        for dev in gui_instr.gui_devices:
-            self.view_main.gui_removeDevice(dev)
+            self.view_monitor.gui_removeDevice(dev)
         self.gui_instruments.remove(gui_instr)
+        self.view_rack.gui_removeGuiInstrument(gui_instr)
+        if gui_instr.ph_instr is not None:
+            del gui_instr.ph_instr
+        del gui_instr
 
     def getValue(self, gui_dev):
         # get the value of the GuiDevice and update the gui
-        dev = gui_dev.getPhDev()
-        if dev is None: return
-        value = self.model.getValue(gui_dev.getPhDev(basedev=True))
+        try:
+            dev = gui_dev.getPhDev()
+            if dev is None: return
+            value = self.model.getValue(gui_dev.getPhDev(basedev=True))
+        except Exception as e:
+            tb_str = "".join(traceback.format_tb(e.__traceback__))
+            self.pop.getValueError(e, tb_str)
+            return
 
         # because logical_dev is innacessible when ramping:
         factor = gui_dev.logical_kwargs['scale'].get('factor', 1)
-        value = value / factor
+        if isinstance(value, (int, float)):
+            value = value / factor
 
         gui_dev.cache_value = value
         self.view_rack.gui_updateDeviceValue(gui_dev, value)
@@ -228,15 +263,13 @@ class HegelLab:
 
     def setValue(self, gui_dev, val):
         # set the value of the GuiDevice and update the gui
-        try:
-            self.model.setValue(gui_dev.getPhDev(), val)
-            QApplication.processEvents()
-        except Exception as e:
-            tb_str = "".join(traceback.format_tb(e.__traceback__))
-            self.pop.setValueError(e, tb_str)
-            return
-        #self.view_rack.gui_updateDeviceValue(gui_dev, val)
+        self.model.setValue(gui_dev.getPhDev(), val)
+        #QApplication.processEvents()
         self.view_rack.win_set.close()
+    
+    def _setValueError(self, e):
+        tb_str = "".join(traceback.format_tb(e.__traceback__))
+        self.pop.setValueError(e, tb_str)
 
     def renameDevice(self, gui_dev, new_nickname):
         gui_dev.nickname = new_nickname
@@ -246,21 +279,23 @@ class HegelLab:
 
     # -- SWEEP TREES --
 
-    def addSweepDev(self, instr_nickname, dev_nickname, row):
+    def addSweepDev(self, instr_nickname, dev_nickname):
         # add a device to the sweep tree, launch the config window
         gui_dev = self.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
         
         if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
             return
 
-        # if the device is not gettable, ask if we want to add it anyway
         if gui_dev.type[0] == False and self.pop.notSettable() == False:
+            # if the device is not gettable, ask if we want to add it anyway
             return
-        
-        if self.view_main.gui_addSweepGuiDev(gui_dev, row):
-            self.showSweepConfig(gui_dev)
+        if self.view_main.tree_sw.findItemByData(gui_dev) != None:
+            self.pop.devAlreadyHere()
+            return
+        self.view_main.gui_addSweepGuiDev(gui_dev)
+        self.showSweepConfig(gui_dev)
 
-    def addOutputDev(self, instr_nickname, dev_nickname, row):
+    def addOutputDev(self, instr_nickname, dev_nickname):
         # add a device to the output tree
         gui_dev = self.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
         if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
@@ -270,9 +305,9 @@ class HegelLab:
         if self.view_main.tree_out.findItemByData(gui_dev) != None:
             self.pop.devAlreadyHere()
             return
-        self.view_main.gui_addOutItem(gui_dev, row)
+        self.view_main.gui_addOutItem(gui_dev)
 
-    def addLogDev(self, instr_nickname, dev_nickname, row):
+    def addLogDev(self, instr_nickname, dev_nickname):
         # add a device to the log tree
         gui_dev = self.getGuiInstrument(instr_nickname).getGuiDevice(dev_nickname)
         if not gui_dev.isLoaded() and self.pop.devNotLoaded() == False:
@@ -281,7 +316,7 @@ class HegelLab:
         if self.view_main.tree_log.findItemByData(gui_dev) != None:
             self.pop.devAlreadyHere()
             return
-        self.view_main.gui_addLogItem(gui_dev, row)
+        self.view_main.gui_addLogItem(gui_dev)
 
     def showSweepConfig(self, gui_dev):
         # launch the sweep config window for gui_dev
@@ -464,15 +499,23 @@ if __name__ == "__main__":
     from PyQt5.QtGui import QPixmap
     from PyQt5 import QtCore
 
-    create_app = False
+    with_app = False
     if len(sys.argv) > 1 and sys.argv[1] == "--with-app":
-        create_app = True
+        with_app = True
+        QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
+        QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
         app = QApplication([])
         app.setApplicationDisplayName("HegelLab")
-    else:
-        #app = None
-        app = QApplication.instance()
-    
+
+        class Logger():
+            def __init__(self, filename):
+                self.log = open(filename, "a")
+            def write(self, message):
+                self.log.write(message)
+            def flush(self):
+                pass
+        sys.stdout = Logger("logs/stdout.txt")
+        sys.stderr = Logger("logs/stderr.txt")
     
     pixmap = QPixmap("./resources/favicon/favicon.png")
     pixmap = pixmap.scaled(256, 256)
@@ -485,10 +528,10 @@ if __name__ == "__main__":
 
     splash.show()
 
-    hl = HegelLab(app)
+    hl = HegelLab()
     splash.finish(hl.view_main)
 
     hl.showMain()
     
-    if create_app:
+    if with_app:
         sys.exit(app.exec())
