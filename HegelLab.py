@@ -1,4 +1,5 @@
 import sys
+from IPython import get_ipython
 
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -247,11 +248,11 @@ class HegelLab(QObject):
             ph_dev = self.model.getDevice(gui_dev.parent.ph_instr, gui_dev.ph_name)
             gui_dev.ph_dev = ph_dev
             # type
-            detected_type = self.model.devType(ph_dev)
+            detected_type = self.model.getType(ph_dev)
             type = [detected_type[0] if gui_dev.type[0] is None else gui_dev.type[0],
                     detected_type[1] if gui_dev.type[1] is None else gui_dev.type[1]]
             gui_dev.type = tuple(type)
-            # choice
+            gui_dev.multi = self.model.getFormatMulti(ph_dev)
             gui_dev.ph_choice = self.model.getChoices(ph_dev)
         except Exception as e:
             self.pop.devLoadError(e)
@@ -311,7 +312,7 @@ class HegelLab(QObject):
             return
 
         # because logical_dev is innacessible when ramping:
-        factor = gui_dev.logical_kwargs['scale'].get('factor', 1)
+        factor = gui_dev.logical_kwargs['scale'].get('factor', 1.)
         if isinstance(value, (int, float)):
             value = value / factor
 
@@ -497,7 +498,7 @@ class HegelLab(QObject):
         # run sweep thread
         self.sweep_thread.initSweepKwargs(sweep_kwargs)
         self.sweep_thread.initSweepStatus(gui_sw_devs, gui_out_devs, time.time())
-        self.sweep_thread.raz_sw_devs = lambda: [self.setValue(gui_dev, 0) for gui_dev in gui_sw_devs]
+        self.sweep_thread.raz_sw_devs = lambda: [self.setValue(gui_dev, 0) for gui_dev in gui_sw_devs if gui_dev.raz]
         for out in gui_out_devs:
             out.alternate = self.view_main.cb_alternate.isChecked()
         self.sweep_thread.start()
@@ -526,6 +527,8 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QSplashScreen
     from PyQt5.QtGui import QPixmap
     from PyQt5 import QtCore
+
+    print(get_ipython())
 
     create_app = False
     app = None

@@ -19,6 +19,9 @@
                     "nickname": "courant",
                     "ph_name": "current",
                     "scale": {"factor": 10}
+                },
+                {
+                    "ph_name": "s11"
                 }
             ]
         },

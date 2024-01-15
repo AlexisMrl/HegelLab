@@ -2,7 +2,7 @@ from pyHegel import commands as c
 from pyHegel import instruments
 
 from PyQt5.QtCore import QThread, pyqtSignal
-class setThread(QThread):
+class SetThread(QThread):
     # thread for set commands
     finished_signal = pyqtSignal(object)
 
@@ -83,16 +83,19 @@ class Model:
             return list_choices
         else:
             return None
-
-    def initLoopControl(self):
-        return c.Loop_Control()
-
-    def devType(self, dev):
-        # check the type of a device:
+    
+    def getType(self, dev):
+        # return the type of a device:
         # set, get or set/get:
         settable = True if dev._setdev_p is not None else False
         gettable = True if dev._getdev_p is not None else False
         return (settable, gettable)
+    
+    def getFormatMulti(self, dev):
+        return dev.getformat().get('multi', None) if hasattr(dev, 'getformat') else None
+
+    def initLoopControl(self):
+        return c.Loop_Control()
 
     def getValue(self, dev, fn_after=None):
         return c.get(dev)
@@ -105,6 +108,15 @@ class Model:
         #thread.error_signal.connect(self.lab.getValueError)
         #thread.start()
 
+    def _initSetThread(self, gui_dev, dev, stop_fn):
+        # called by makeLogicalDevice
+        # every device has a set_thread
+        thread = SetThread(dev, stop_fn)
+        def onFinished(exception):
+            self.lab.sig_setValueFinished.emit(gui_dev, exception)
+        thread.finished_signal.connect(onFinished)
+        return thread
+    
     def setValue(self, gui_dev, value):
         # start set thread
         thread = gui_dev.set_thread
@@ -113,16 +125,6 @@ class Model:
         thread.value = value
         thread.start()
 
-    def _initSetThread(self, gui_dev, dev, stop_fn):
-        # called by makeLogicalDevice
-        # every device has a set_thread
-        thread = setThread(dev, stop_fn)
-        #thread.finished_signal.connect(onFinished)
-        def onFinished(exception):
-            self.lab.sig_setValueFinished.emit(gui_dev, exception)
-        thread.finished_signal.connect(onFinished)
-        return thread
-    
     def makeLogicalDevice(self, gui_dev, gui_dev_kwargs, instrument):
         # kwargs = {'scale':{kw scale}, 'ramp':{kw ramp}, 'limit':{kw limit}}
         # (not dict but OrederedDict)
@@ -135,10 +137,9 @@ class Model:
         scale_cls = instruments.ScalingDevice
 
         new_dev = basedev
-        stop_fn = lambda: None if not isinstance(basedev, instruments.RampDevice) else basedev.stop
+        # we define a stop function, called before setting a new value
+        def stop_fn(): None if not isinstance(basedev, instruments.RampDevice) else basedev.stop()
     
-        
-        
         ramp_kw = gui_dev_kwargs.get('ramp', {}).copy()
         scale_kw = gui_dev_kwargs.get('scale', {}).copy()
         limit_kw = gui_dev_kwargs.get('limit', {}).copy()

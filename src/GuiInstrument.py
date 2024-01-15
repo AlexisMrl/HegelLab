@@ -1,3 +1,5 @@
+import numpy as np
+
 class GuiInstrument:
     # class attached to every item that represent an instr
 
@@ -76,6 +78,7 @@ class GuiDevice:
         self.extra_args = extra_args # dict of kwargs for tuple devices
         self.parent = parent
         self.type = (None, None)  # (settable, gettable) = (T/F, T/F)
+        self.multi = None # a tuple giving the shape of return when get (None -> one val only)
         
         self.logical_kwargs = {'scale': {}, 'ramp':{}, 'limit':{}}
         self.logical_dev = None # limit(ramp(scale())))
@@ -131,6 +134,12 @@ class GuiDevice:
             if self.nickname == ph_name:
                 return nickname
             return nickname + " (" + ph_name + ")"
+    
+    def getCacheValueToStr(self):
+        if isinstance(self.cache_value, type(None)): return ''
+        elif isinstance(self.cache_value, np.ndarray): return np.array_str(self.cache_value, max_line_width=9999)
+        else: return str(self.cache_value)
+
     
     def isLoaded(self):
         return self.ph_dev is not None
@@ -191,3 +200,4 @@ class GuiDevice:
             s += f"\n{self.nickname} = instruments.LimitDevice({self.nickname}, {limit_str})"
             
         return s
+

@@ -203,7 +203,7 @@ class RackWindow(Window):
         # fill text of the device item
         gui_dev = self.tree.getData(dev_item)
         dev_item.setText(0, gui_dev.getDisplayName("long"))
-        dev_item.setText(1, str(gui_dev.cache_value) if gui_dev.cache_value is not None else "")
+        dev_item.setText(1, gui_dev.getCacheValueToStr())
         dev_item.setForeground(1, QtGui.QBrush(QtGui.QColor("black")))
         dev_item.setText(2, str(self._logicalParamStr(gui_dev.logical_kwargs)))
         dev_item.setText(3, {(True, True): "set/get", (True, False): "set",
@@ -275,7 +275,7 @@ class RackWindow(Window):
     def gui_onValueGet(self, gui_dev):
         # update the value of the item corresponding to gui_dev
         if dev_item := self.tree.findItemByData(gui_dev):
-            dev_item.setText(1, str(gui_dev.cache_value))
+            dev_item.setText(1, gui_dev.getCacheValueToStr())
             dev_item.setForeground(1, QtGui.QBrush(QtGui.QColor("black")))
     
     def gui_onValueSet(self, gui_dev):
@@ -445,8 +445,11 @@ class RackWindow(Window):
             # try eval the kwargs:
             try:
                 extra_args_dict = eval(f"dict({win.le_kwargs.text()})")
-            except: self.lab.pop.devExtraArgsEvalFail()
-            else: gui_dev.extra_args = extra_args_dict
+            except:
+                self.lab.pop.devExtraArgsEvalFail()
+                return
+            else:
+                gui_dev.extra_args = extra_args_dict
 
             # getting values
             if win.cb_ramp.isChecked():

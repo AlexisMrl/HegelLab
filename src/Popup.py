@@ -62,7 +62,7 @@ class Popup:
     def devExtraArgsEvalFail(self):
         self._popErrorW("Warning",
             """Fail to understand keywords arguments for device.\n
-            The string must be valid for: `dict(eval(string))`.
+            The string must be valid for: `dict(eval(<input>))`.
             """)
 
     def devLoadLogicalError(self, exception):

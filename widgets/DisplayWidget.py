@@ -13,10 +13,10 @@ class DisplaySweepData:
         self.resetData()
     
     def resetData(self):
-        self.raw_data = np.full((11, 11), np.nan)
-        self.data = np.full((11, 11), np.nan)
-        self.image_rect = (-5, -5, 11, 11) # x, y, w, h
-        self.sweep_range = [[0, 0, 1], [0, 1, 1]] # [[start1, stop1, nbpts1], [..2]]
+        self.raw_data = np.full((1, 1), np.nan)
+        self.data = np.full((1, 1), np.nan)
+        self.image_rect = (-0.5, -0.5, 1, 1) # x, y, w, h
+        self.sweep_range = [[0, 1, 1], [0, 1, 1]] # [[start1, stop1, nbpts1], [..2]]
         self.label_x = "x"
         self.label_y = "y"
         self.label_out = "out"
@@ -75,11 +75,13 @@ class DisplayWidget(QMainWindow):
         # vertical plot
         self.vertical = self.graph.addPlot(row=1, col=1)
         self.vertical.hideButtons()
+        self.vertical.showGrid(x=True, y=True)
         self.vertical.getAxis('left').setWidth(50)
         self.vPlot = self.vertical.plot()
         # horizontal plot
         self.horizontal = self.graph.addPlot(row=1, col=0)
         self.horizontal.hideButtons()
+        self.horizontal.showGrid(x=True, y=True)
         self.horizontal.getAxis('left').setWidth(50)
         self.hPlot = self.horizontal.plot()
         # plot links
@@ -209,11 +211,16 @@ class DisplayWidget(QMainWindow):
         vert_trace = self.disp_data.data[x]
         self.horiz_trace = horiz_trace
         self.vert_trace = vert_trace
-        h_plot.setData(x=np.linspace(*self.disp_data.sweep_range[0]), y=horiz_trace)
+
+        h_x_axis = np.linspace(*self.disp_data.sweep_range[0])
+        if len(h_x_axis) == len(horiz_trace):
+            h_plot.setData(x=h_x_axis, y=horiz_trace)
         if len(np.unique(horiz_trace)) > 2: # autorange only if non-nan val >= 2
             self.horizontal.autoRange()
-        #v_plot.setData(y=vert_trace)
-        v_plot.setData(x=np.linspace(*self.disp_data.sweep_range[1]), y=vert_trace)
+
+        v_x_axis = np.linspace(*self.disp_data.sweep_range[1])
+        if len(v_x_axis) == len(vert_trace):
+            v_plot.setData(x=v_x_axis, y=vert_trace)
         if len(np.unique(vert_trace)) > 2:
             self.vertical.autoRange()
 

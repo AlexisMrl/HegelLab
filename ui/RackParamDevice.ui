@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>294</width>
-    <height>198</height>
+    <height>224</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -137,15 +137,16 @@
   </customwidget>
  </customwidgets>
  <tabstops>
+  <tabstop>le_kwargs</tabstop>
+  <tabstop>sb_ramp</tabstop>
+  <tabstop>sb_scale</tabstop>
+  <tabstop>sb_min</tabstop>
+  <tabstop>sb_max</tabstop>
   <tabstop>pb_create</tabstop>
   <tabstop>pb_cancel</tabstop>
   <tabstop>cb_ramp</tabstop>
-  <tabstop>sb_ramp</tabstop>
   <tabstop>cb_scale</tabstop>
-  <tabstop>sb_scale</tabstop>
   <tabstop>cb_limit</tabstop>
-  <tabstop>sb_min</tabstop>
-  <tabstop>sb_max</tabstop>
  </tabstops>
  <resources/>
  <connections/>
