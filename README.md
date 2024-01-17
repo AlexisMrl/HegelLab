@@ -30,16 +30,16 @@ Note: live view for higher than two swept devices not supported.
 | l | unfold tree item  |
 | k | fold tree item  |
 | x | (in most places) remove item |
-| w, i | show rack (instrument) window  |
-| w, d | show display |
-| w, m | show monitor |
-| w, w | show main window  |
-| t, o | focus out tree |
-| t, s | focus sweep tree |
-| t, g | focus log tree |
-| w, q | close current window  |
+| w i | show rack (instrument) window  |
+| w d | show display |
+| w m | show monitor |
+| w w | show main window  |
+| t o | focus out tree |
+| t s | focus sweep tree |
+| t g | focus log tree |
+| w q | close current window  |
 
-| Rack |   |
+| Rack | w i |
 |---|---|
 | Shift+a | add instrument  |
 | Shift+l | load instrument |
@@ -54,11 +54,11 @@ Note: live view for higher than two swept devices not supported.
 | Space | get value |
 | Shift+Space  | set value  |
 
-| Display |   |
+| Display | w d |
 |---|---|
 | Space | add/remove fixed target  |
 
-| Monitor |   |
+| Monitor | w m |
 |---|---|
 | - | decrease interval  |
 | + | increase instrument |

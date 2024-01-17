@@ -48,6 +48,7 @@ class HegelLab(QObject):
         # default instrument list
         self.default_instr_list = self.loader.importFromJSON('default_instruments.json')
         self.gui_instruments = []  # list of loaded GuiInstrument
+        self.sweep_file_path = ''
 
         # signals -->
         self.sig_instrumentAdded.connect(rack.gui_onInstrumentAdded)
@@ -402,15 +403,14 @@ class HegelLab(QObject):
     # -- SWEEP THREAD --
 
     def _prepareFilename(self):
-        filename = self.view_main.filename_edit.text()
-        if filename == "":
-            filename = "sweep"
+        folder_path = self.view_main.folder_path
         date = time.strftime("%Y%m%d")
-        dir_path = "./temp/" + date
-        if not os.path.exists(dir_path):
-            os.mkdir(dir_path)
-        filename = dir_path + "/%t_" + filename + ".txt"
-        return filename
+        folder_path += date
+        if not os.path.exists(folder_path): os.mkdir(folder_path)
+
+        filename = self.view_main.filename_edit.text()
+        if filename == "": filename = "sweep"
+        return folder_path + "/%t_" + filename + ".txt"
 
     def _startSweepCheckError(self, start, stop, npts, ph_sw_devs, ph_out_devs):
         if None in start or None in stop or None in npts:

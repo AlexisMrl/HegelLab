@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QMenu,
     QAction,
+    QFileDialog,
 )
 from PyQt5 import QtGui, uic
 from PyQt5.QtCore import Qt
@@ -17,6 +18,7 @@ from src.GuiInstrument import GuiDevice, GuiInstrument
 class MainWindow(Window):
     def __init__(self, lab):
         super().__init__()
+        self.folder_path = "./temp/"
         # -- ui setup --
         uic.loadUi("ui/MainWindow.ui", self)
         self.setAttribute(Qt.WA_DeleteOnClose)
@@ -25,17 +27,23 @@ class MainWindow(Window):
         self.resize(1100, 600)
         self.toolBar.setToolButtonStyle(2)  # text beside icon
         self.toolBar.setContextMenuPolicy(Qt.PreventContextMenu)
-        # add a line edit in the toolbar for filename (not possible from designer):
-        self.filename_edit = QLineEdit()
-        self.filename_edit.setObjectName("filename_edit")
-        self.filename_edit.setPlaceholderText("filename")
-        self.filename_edit.setFixedWidth(200)
-        self.toolBar.addWidget(self.filename_edit)
         # add stop and abort buttons:
         self.pause_button = QPushButton("Pause", enabled=False)
         self.abort_button = QPushButton("Abort", enabled=False)
         self.toolBar.addWidget(self.pause_button)
         self.toolBar.addWidget(self.abort_button)
+        # add a line edit in the toolbar for filename (not possible from designer):
+        self.toolBar.addSeparator()
+        self.filename_edit = QLineEdit()
+        self.filename_edit.setObjectName("filename_edit")
+        self.filename_edit.setPlaceholderText("filename")
+        self.filename_edit.setFixedWidth(200)
+        self.toolBar.addWidget(self.filename_edit)
+        # path select
+        self.folder_path_button = QPushButton("Select path")
+        self.folder_path_label = QLabel(self.folder_path)
+        self.toolBar.addWidget(self.folder_path_button)
+        self.statusBar().addPermanentWidget(self.folder_path_label)
         # display action buttons
         menu_display = QMenu()
         simple_icon = QtGui.QIcon("resources/display1.svg")
@@ -75,6 +83,8 @@ class MainWindow(Window):
         self.actionInstruments.triggered.connect(self.lab.showRack)
         self.actionDisplay.triggered.connect(self.lab.showDisplay)
         self.actionMonitor.triggered.connect(self.lab.showMonitor)
+
+        self.folder_path_button.clicked.connect(self.onSelectSweepPath)
 
         self.tree_sw.guiDeviceDropped.connect(self.onDropSweepDev)
         self.tree_out.guiDeviceDropped.connect(self.onDropOutDev)
@@ -236,3 +246,11 @@ class MainWindow(Window):
         self._changePauseButton("Pause", self.lab.pauseSweep)
         self._setEta(None, None, None)
     
+
+    # -- Select sweep path --
+    def onSelectSweepPath(self):
+        folder_path = QFileDialog.getExistingDirectory(self, 'Select Folder')
+        if folder_path:
+            folder_path += "/"
+            self.folder_path = folder_path 
+            self.folder_path_label.setText(folder_path)
