@@ -121,6 +121,9 @@ class Popup:
     def notGettable(self):
         return self._popYesNo("Not gettable", "This device is not gettable. Try to add it anyway?")
 
+    def sweepABool(self):
+        return self._popYesNo("Sweep boolean", "This device's output type is define as boolean. Want to sweep it?")
+
     def askRemoveDevice(self, nickname):
         msg = f"Are you sure you want to remove the device '{nickname}' ?"
         return self._popYesNo("Remove device", msg)

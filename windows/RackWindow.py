@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import (
     QPushButton,
+    QCheckBox,
     QVBoxLayout,
     QHBoxLayout,
     QGridLayout,
@@ -206,8 +207,7 @@ class RackWindow(Window):
         dev_item.setText(1, gui_dev.getCacheValueToStr())
         dev_item.setForeground(1, QtGui.QBrush(QtGui.QColor("black")))
         dev_item.setText(2, str(self._logicalParamStr(gui_dev.logical_kwargs)))
-        dev_item.setText(3, {(True, True): "set/get", (True, False): "set",
-                            (False, True): "get", (False, False): "?", (None, None): "?",}[gui_dev.type],)
+        dev_item.setText(3, gui_dev.getTypeToStr())
             
         status_str = []
         if gui_dev.status['sweep']: status_str.append('sweep')
@@ -371,8 +371,6 @@ class RackWindow(Window):
         bt_ok.clicked.connect(okClicked)
         bt_cancel.clicked.connect(self.win_add.close)
 
-        self.win_add.short("Alt+a", bt_ok.click)
-
 
 
     def window_DeviceSet(self, gui_dev):
@@ -392,6 +390,12 @@ class RackWindow(Window):
             for choice in gui_dev.ph_choice:
                 value_wid.addItem(str(choice), choice)
             value_wid.value = value_wid.currentData
+            layout.addWidget(value_wid)
+        elif gui_dev.type[2] is bool:  # checkbox
+            value_wid = QCheckBox(gui_dev.getDisplayName("long"))
+            lbl.setText("Set boolean: ")
+            value_wid.setChecked(bool(gui_dev.cache_value))
+            value_wid.value = lambda: value_wid.isChecked()
             layout.addWidget(value_wid)
         else:  # spinbox by default
             value_wid = PyScientificSpinBox()
@@ -426,7 +430,17 @@ class RackWindow(Window):
         win.setWindowTitle("Configure device - " + gui_dev.getDisplayName("long"))
         win.setWindowIcon(QtGui.QIcon("resources/instruments.svg"))
 
-        # setting values
+        # setting ui values
+        is_settable, is_gettable, out_type = gui_dev.type
+        win.cb_set.setChecked(is_settable if is_settable is not None else False)
+        win.cb_get.setChecked(is_gettable if is_gettable is not None else False)
+        win.cb_out_type.clear()
+        list_types = {bool: 'bool', None: 'Undefined'} # curent list of allowed types. will fail if not in this list
+        for data, lbl in list_types.items():
+            win.cb_out_type.addItem(lbl, data)
+        if (index := win.cb_out_type.findData(out_type)) != -1:
+            win.cb_out_type.setCurrentIndex(index)
+
         ramp, scale, limit = gui_dev.logical_kwargs['ramp'], gui_dev.logical_kwargs['scale'], gui_dev.logical_kwargs['limit']
         if ramp != {}:
             win.cb_ramp.setChecked(True)
@@ -442,6 +456,7 @@ class RackWindow(Window):
         win.le_kwargs.setText(", ".join([f"{key}={repr(val)}" for key, val in gui_dev.extra_args.items()]))
 
         def onCreate():
+            gui_dev.type = [win.cb_set.isChecked(), win.cb_get.isChecked(), win.cb_out_type.currentData()]
             # try eval the kwargs:
             try:
                 extra_args_dict = eval(f"dict({win.le_kwargs.text()})")

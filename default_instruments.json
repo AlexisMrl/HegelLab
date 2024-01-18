@@ -18,7 +18,8 @@
                 {
                     "nickname": "courant",
                     "ph_name": "current",
-                    "scale": {"factor": 10}
+                    "scale": {"factor": 10},
+                    "type": {"output": "bool"}
                 },
                 {
                     "ph_name": "s11"
@@ -34,6 +35,7 @@
                 {"nickname": "sigouts_en%i",
                     "ph_name": "sigouts_en",
                     "extra_args_multi": {"ch": [0, 1]},
+                    "type": {"output": "bool"},
                     "_comment": "2 dev at once: (sigouts_en0, ch=0) and (sigouts_en1, ch=1)"},
                 {"nickname": "sigouts_range%i",
                     "ph_name": "sigouts_range",
@@ -61,12 +63,13 @@
         {
             "name": "iTest_Be214x",
             "ph_class": "instruments.iTest_be214x",
-            "address": "TCPIP::192.168.150.145::5025::SOCKET",
+            "address": "TCPIP::192.168.150.112::5025::SOCKET",
             "slots": [7, 8, 9],
             "devices": [
                 {"nickname_multi": ["en_ch1", "en_ch2", "en_ch3", "en_ch4"],
                     "ph_name": "output_en",
-                    "extra_args_multi":{"ch": [1, 2, 3, 4]}},
+                    "extra_args_multi":{"ch": [1, 2, 3, 4]},
+                    "type": {"output": "bool"}},
                 {"nickname_multi": ["level_ch1", "level_ch2", "level_ch3", "level_ch4"],
                     "ph_name": "ramp",
                     "extra_args_multi": {"ch": [1, 2, 3, 4]}},
@@ -88,11 +91,12 @@
         {
             "name": "iTest_Be2102",
             "ph_class": "instruments.iTest_be2102",
-            "address": "TCPIP::192.168.150.145::5025::SOCKET",
+            "address": "TCPIP::192.168.150.112::5025::SOCKET",
             "slots": [1, 2, 3, 4, 5, 6],
             "devices": [
                 {"nickname": "en",
-                    "ph_name": "output_en"},
+                    "ph_name": "output_en",
+                    "type": {"output": "bool"}},
                 {"nickname": "level",
                     "ph_name": "ramp"},
                 {"ph_name": "range"},

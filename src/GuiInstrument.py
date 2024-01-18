@@ -77,7 +77,7 @@ class GuiDevice:
         self.ph_name = ph_name
         self.extra_args = extra_args # dict of kwargs for tuple devices
         self.parent = parent
-        self.type = (None, None)  # (settable, gettable) = (T/F, T/F)
+        self.type = [None, None, None]  # (settable, gettable, output_type) = (T/F, T/F, None/bool)
         self.multi = None # a tuple giving the shape of return when get (None -> one val only)
         
         self.logical_kwargs = {'scale': {}, 'ramp':{}, 'limit':{}}
@@ -135,10 +135,24 @@ class GuiDevice:
                 return nickname
             return nickname + " (" + ph_name + ")"
     
+    def getTypeToStr(self):
+        ret = {(True, True): "set/get", (True, False): "set",
+               (False, True): "get", (False, False): "?", (None, None): "?",}[tuple(self.type[:2])]
+        ret += {bool: " (bool)", float: " (float)", np.array: " (np.array)", None: ""}[self.type[2]]
+        return ret
+    
     def getCacheValueToStr(self):
-        if isinstance(self.cache_value, type(None)): return ''
-        elif isinstance(self.cache_value, np.ndarray): return np.array_str(self.cache_value, max_line_width=9999)
-        else: return str(self.cache_value)
+        if self.cache_value is None:
+            return ''
+        if self.type[2] is bool:
+            try:
+                str_val = str(bool(self.cache_value))
+                return str_val
+            except: pass
+        if isinstance(self.cache_value, np.ndarray):
+            return np.array_str(self.cache_value, max_line_width=9999)
+        else:
+            return str(self.cache_value)
 
     
     def isLoaded(self):
@@ -158,6 +172,8 @@ class GuiDevice:
             d['scale'] = self.logical_kwargs['scale']
         if self.logical_kwargs['limit'] != {}:
             d['limit'] = self.logical_kwargs['limit']
+        if self.type[2] is bool:
+            d['type'] = {'output': 'bool'}
         return d
 
     def toPyHegelScript(self):

@@ -195,8 +195,13 @@ class HegelLab(QObject):
             nickname = self._checkDevNickname(nickname, gui_instr)
             gui_dev = GuiDevice(nickname, ph_name, extra_args, parent=gui_instr)
             # type
-            setget = dict(dev_dict.get('type', dict(set=None, get=None)))
-            gui_dev.type = (setget['set'], setget['get'])
+            type_dict = dev_dict.get('type', dict(set=None, get=None, output="None"))
+            is_set = type_dict.get('set', None)
+            is_get = type_dict.get('get', None)
+            output_type = type_dict.get('output', None)
+            try: output_type = eval(output_type)
+            except: output_type = None
+            gui_dev.type = [is_set, is_get, output_type]
             # limit, scale, ramp
             scale_kw = dict(dev_dict.get('scale', {}))
             gui_dev.logical_kwargs['scale'] = scale_kw
@@ -249,10 +254,10 @@ class HegelLab(QObject):
             ph_dev = self.model.getDevice(gui_dev.parent.ph_instr, gui_dev.ph_name)
             gui_dev.ph_dev = ph_dev
             # type
-            detected_type = self.model.getType(ph_dev)
-            type = [detected_type[0] if gui_dev.type[0] is None else gui_dev.type[0],
-                    detected_type[1] if gui_dev.type[1] is None else gui_dev.type[1]]
-            gui_dev.type = tuple(type)
+            set, get, output = self.model.getType(ph_dev)
+            gui_dev.type = [set if gui_dev.type[0] is None else gui_dev.type[0],
+                            get if gui_dev.type[1] is None else gui_dev.type[1],
+                            output if gui_dev.type[2] is None else gui_dev.type[2]]
             gui_dev.multi = self.model.getFormatMulti(ph_dev)
             gui_dev.ph_choice = self.model.getChoices(ph_dev)
         except Exception as e:
@@ -352,6 +357,7 @@ class HegelLab(QObject):
         if not boo: pass
         elif not gui_dev.isLoaded() and not self.pop.devNotLoaded(): return
         elif not gui_dev.type[0] and not self.pop.notSettable(): return
+        elif gui_dev.type[2] is bool and not self.pop.sweepABool(): return
         else: # launch the sweep config window for gui_dev
             driver_cls = eval(gui_dev.parent.driver)
             driver_cls.sweep(self, gui_dev, self.sig_sweepDeviceSet)

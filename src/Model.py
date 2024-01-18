@@ -89,7 +89,8 @@ class Model:
         # set, get or set/get:
         settable = True if dev._setdev_p is not None else False
         gettable = True if dev._getdev_p is not None else False
-        return (settable, gettable)
+        output_type = None
+        return settable, gettable, output_type
     
     def getFormatMulti(self, dev):
         return dev.getformat().get('multi', None) if hasattr(dev, 'getformat') else None
