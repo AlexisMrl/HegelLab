@@ -43,8 +43,8 @@ class Popup:
     def sweepStartStopEqual(self):
         self._popError("Warning", "A device is set to sweep from a value to the same value",)
 
-    def instrLoadError(self, exception):
-        self._popErrorC("Error",
+    def instrLoadError(self, exception, nickname=''):
+        self._popErrorC(f"Error - {nickname}",
             "Error while loading instrument: " + str(exception),
             self._excToStr(exception))
 

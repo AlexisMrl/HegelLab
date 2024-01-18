@@ -32,7 +32,6 @@ class HegelLab(QObject):
 
         self.app = app
 
-
         self.loader = LoaderSaver.LoaderSaver(self)
         self.pop = Popup.Popup()
         self.model = Model.Model(self)
@@ -41,9 +40,11 @@ class HegelLab(QObject):
         self.view_display = disp = DisplayWindow.DisplayWindow(self)
         self.view_monitor = moni = MonitorWindow.MonitorWindow(self)
 
-        # shortcut:
+        # for drop mime data:
         TreeWidget.TreeWidget.lab = self
-        WindowWidget.Window.initShortcutsAll(self)
+        # for shortcuts:
+        WindowWidget.Window.lab = self
+        [win.initShortcuts() for win in WindowWidget.Window.windows]
 
         # default instrument list
         self.default_instr_list = self.loader.importFromJSON('default_instruments.json')
@@ -52,6 +53,7 @@ class HegelLab(QObject):
 
         # signals -->
         self.sig_instrumentAdded.connect(rack.gui_onInstrumentAdded)
+        self.sig_instrumentLoadStarted.connect(rack.gui_updateGuiInstrument)
         self.sig_instrumentLoadFinished.connect(rack.gui_updateGuiInstrument)
         self.sig_deviceLoadFinished.connect(rack.gui_updateGuiDevice)
         self.sig_newDevicesAdded.connect(rack.gui_onNewDevicesAdded)
@@ -75,7 +77,6 @@ class HegelLab(QObject):
         self.sig_monitorDeviceSet.connect(lambda gui_dev: rack.gui_updateGuiDevice(gui_dev))
 
         # signals <--
-        self.sig_instrumentLoadFinished.connect(self.onLoadInstrumentFinished)
         self.sig_setValueFinished.connect(self.onSetValueFinished)
     
 
@@ -230,18 +231,23 @@ class HegelLab(QObject):
         
         self.sig_instrumentAdded.emit(gui_instr)
 
-    sig_instrumentLoadFinished = pyqtSignal(GuiInstrument, object)
+    sig_instrumentLoadStarted = pyqtSignal(GuiInstrument)
     def loadGuiInstrument(self, gui_instr):
         # ask driver for loading a GuiInstrument 
         # the driver must set the gui_instr.ph_instr attribute
         # on success(fail), the driver must emit sig_success(sig_error) 
-        # it also emit the signals without exception=None if success
-        eval(gui_instr.driver).load(self, gui_instr, self.sig_instrumentLoadFinished)
+        gui_instr.loading = True
+        self.sig_instrumentLoadStarted.emit(gui_instr)
+        eval(gui_instr.driver).load(self, gui_instr, self.loadInstrumentFinished)
+        
     
-    def onLoadInstrumentFinished(self, gui_instr, exception):
-        # connected to sig_instrumentLoadFinished
+    sig_instrumentLoadFinished = pyqtSignal(GuiInstrument, object)
+    def loadInstrumentFinished(self, gui_instr, exception=None):
+        gui_instr.loading = False
+        self.sig_instrumentLoadFinished.emit(gui_instr, exception)
         if exception:
-            self.pop.instrLoadError(exception)
+            self.pop.instrLoadError(exception, gui_instr.nickname)
+            return
         else:
             # try load all devices
             for gui_dev in gui_instr.gui_devices:
@@ -360,7 +366,7 @@ class HegelLab(QObject):
         elif gui_dev.type[2] is bool and not self.pop.sweepABool(): return
         else: # launch the sweep config window for gui_dev
             driver_cls = eval(gui_dev.parent.driver)
-            driver_cls.sweep(self, gui_dev, self.sig_sweepDeviceSet)
+            driver_cls.sweepWindow(self, gui_dev, self.sig_sweepDeviceSet)
         gui_dev.status['sweep'] = boo
         self.sig_sweepDeviceSet.emit(gui_dev, boo)
 
@@ -533,8 +539,6 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QSplashScreen
     from PyQt5.QtGui import QPixmap
     from PyQt5 import QtCore
-
-    print(get_ipython())
 
     create_app = False
     app = None

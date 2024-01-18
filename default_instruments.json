@@ -119,11 +119,14 @@
             "name": "AMI430_magnet_vector",
             "ph_class": "instruments.AmericanMagnetics_vector",
             "driver": "Drivers.ami430",
-            "address_x": "tcpip::192.168.137.96::7180::socket",
-            "address_y": "tcpip::192.168.137.9::7180::socket",
-            "address_z": "tcpip::192.168.137.198::7180::socket",
+            "address_x": "tcpip::192.168.137.216::7180::socket",
+            "address_y": "tcpip::192.168.137.215::7180::socket",
+            "address_z": "tcpip::192.168.137.214::7180::socket",
             "devices": [
                 {"ph_name": "ramp_to_index"},
+                {"ph_name": "fieldx_T"},
+                {"ph_name": "fieldy_T"},
+                {"ph_name": "fieldz_T"},
                 {"ph_name": "sequence", "type": {"set":false, "get":true}}
             ]
         }, 

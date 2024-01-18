@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (
     QCheckBox,
 )
 from widgets.WindowWidget import Window
+from src.GuiInstrument import GuiInstrument, GuiDevice
 
 ####################
 # Loading thread
@@ -53,13 +54,13 @@ class Default:
     # a class to inherit from when creating a custom gui for an instrument
 
     @staticmethod
-    def load(lab, gui_instr, sig_finished):
-        # load the instrument, finish by emitting sig_finished.emit(gui_instr)
+    def load(lab, gui_instr, onFinished, kwargs={}):
+        # load the instrument, finish by calling
+        # either onFinished(gui_instr, None) or onFinished(gui_instr, err)
 
         nickname = gui_instr.nickname
         ph_class = eval(gui_instr.ph_class)
         address = gui_instr.address
-        kwargs = {}
         if gui_instr.slot is not None:
             kwargs['slot'] = gui_instr.slot
 
@@ -67,21 +68,24 @@ class Default:
 
         def success(instr):
             gui_instr.ph_instr = instr
-            sig_finished.emit(gui_instr, None)
-            #lab.loadGuiDevices(gui_instr)
+            onFinished(gui_instr, None)
+            #defaul: lab.loadInstrumentFinished(gui_instr, None)
             del gui_instr._loading_thread
         thread.loaded_signal.connect(success)
         
         def error(err):
-            sig_finished.emit(gui_instr, err)
+            onFinished(gui_instr, err)
+            #default: lab.loadInstrumentFinished(gui_instr, err)
             del gui_instr._loading_thread
         thread.error_signal.connect(error)
 
+        if hasattr(gui_instr, '_loading_thread'):
+            gui_instr._loading_thread.stop()
         gui_instr._loading_thread = thread # to keep a reference to it
         thread.start()
 
     @staticmethod
-    def sweep(lab, gui_dev, sig_finished):
+    def sweepWindow(lab, gui_dev, sig_finished):
         # set the sweep attribute of gui_dev
         # gui_dev.sweep = [start, stop, npts]
         # then emit sig_finished with parameters: (gui_dev, True)
@@ -164,15 +168,11 @@ class Default:
 
 class ami430(Default):
     @staticmethod
-    def load(lab, gui_instr):
-        vec_nickname = gui_instr.nickname
-        vec_ph_class = eval(gui_instr.ph_class)
-        vec_instr_dict = gui_instr.instr_dict
-
+    def makeWindow(gui_instr):
         win = Window()
         win.setWindowIcon(QtGui.QIcon("resources/load.svg"))
         gui_instr._win = win # avoid garbage collector
-        title = "Setup AMI430 vector - " + str(vec_nickname)
+        title = "Setup AMI430 vector - " + str(gui_instr.nickname)
         win.setWindowTitle(title)
         win.setFixedWidth(400)
         wid = QWidget()
@@ -180,58 +180,49 @@ class ami430(Default):
         form = QFormLayout()
         wid.setLayout(form)
 
-        le_x, le_y, le_z = QLineEdit(), QLineEdit(), QLineEdit()
-        le_x.setText(vec_instr_dict.get('address_x'))
-        le_y.setText(vec_instr_dict.get('address_y'))
-        le_z.setText(vec_instr_dict.get('address_z'))
-        form.addRow("Magnet X", le_x)
-        form.addRow("Magnet Y", le_y)
-        form.addRow("Magnet Z", le_z)
-        lbl_load = QLabel("0/3")
-        btn_load_all = QPushButton("Load magnets")
-        form.addRow(lbl_load, btn_load_all)
-
-        # signal when vector is loaded
-        def loaded(instr):
-            gui_instr.ph_instr = instr
-            del gui_instr._vec_loading_thread
-            win.close()
-            #lab.loadGuiDevices(gui_instr)
-
-        # signal when an axis is loaded
-        gui_instr.magnets = {'magnet_x':None, 'magnet_y':None, 'magnet_z':None}
-        def loaded_ax(instr, ax):
-            gui_instr.magnets[ax] = instr
-            lbl_load.setText(str(int(lbl_load.text()[0])+1) + "/3")
-            if None not in gui_instr.magnets.values():
-                del gui_instr._loading_threads
-                # create and start the vec_loading thread
-                thread_vec = LoadThread(vec_nickname, vec_ph_class, kwargs=gui_instr.magnets)
-                thread_vec.loaded_signal.connect(loaded)
-                gui_instr._vec_loading_thread = thread_vec
-                thread_vec.start()
-
-        def onLoadAll():
-            addresses = [le_x.text(), le_y.text(), le_z.text()]
-            axes = ['magnet_x', 'magnet_y', 'magnet_z']
-            gui_instr._loading_threads = []
-            for addr, ax in zip(addresses, axes):
-                nickname = ax
-                # create and start axis_loading thread
-                th = LoadThread(nickname, instruments.AmericanMagnetics_model430, addr)
-                th.loaded_signal.connect(lambda instr, ax=ax: loaded_ax(instr, ax))
-                th.error_signal.connect(lambda e: lab.loadGuiInstrumentError(gui_instr, e))
-                gui_instr._loading_threads.append(th)
-                th.start()
-                btn_load_all.setText('Loading...')
-                btn_load_all.setEnabled(False)
-
-        btn_load_all.clicked.connect(onLoadAll)
-
-        win.focus()
+        win.le_x, win.le_y, win.le_z = QLineEdit(), QLineEdit(), QLineEdit()
+        win.le_x.setText(gui_instr.instr_dict.get('address_x'))
+        win.le_y.setText(gui_instr.instr_dict.get('address_y'))
+        win.le_z.setText(gui_instr.instr_dict.get('address_z'))
+        form.addRow("Magnet X", win.le_x)
+        form.addRow("Magnet Y", win.le_y)
+        form.addRow("Magnet Z", win.le_z)
+        win.lbl_status = QLabel("0/3")
+        win.btn_load_all = QPushButton("Load magnets")
+        form.addRow(win.lbl_status, win.btn_load_all)
+        
+        return win
 
     @staticmethod
-    def sweep(lab, gui_dev):
+    def load(lab, gui_vec_instr, onFinished):
+        win = ami430.makeWindow(gui_vec_instr)
+
+        # treat axes as standalone gui_instr and load them with Default.load
+        gui_instr_x = GuiInstrument('magnet_x', 'instruments.AmericanMagnetics_model430', 'Drivers.Default', win.le_x.text())
+        gui_instr_y = GuiInstrument('magnet_y', 'instruments.AmericanMagnetics_model430', 'Drivers.Default', win.le_y.text())
+        gui_instr_z = GuiInstrument('magnet_z', 'instruments.AmericanMagnetics_model430', 'Drivers.Default', win.le_z.text())
+
+        def onLoadAll():
+            win.btn_load_all.setText('Loading...')
+            win.btn_load_all.setEnabled(False)
+            for gui_instr in [gui_instr_x, gui_instr_y, gui_instr_z]:
+                Default.load(lab, gui_instr, onAxisLoadFinished)
+        win.btn_load_all.clicked.connect(onLoadAll)
+
+        def onAxisLoadFinished(gui_instr_ax, err):
+            if err:
+                onFinished(gui_vec_instr, err)
+            win.lbl_status.setText(str(int(win.lbl_status.text()[0])+1) + "/3")
+            if win.lbl_status.text()[0] == '3':
+                kwargs = {'magnet_x':gui_instr_x.ph_instr, 'magnet_y':gui_instr_y.ph_instr, 'magnet_z':gui_instr_z.ph_instr}
+                Default.load(lab, gui_vec_instr, lab.loadInstrumentFinished, kwargs)
+                win.close()
+
+        win.focus()
+        win.btn_load_all.setFocus(True)
+
+    @staticmethod
+    def sweepWindow(lab, gui_dev, sig_finished):
         if gui_dev.ph_name != 'ramp_to_index':
             Default.sweep(lab, gui_dev)
         # set the sweep attribute of gui_dev
@@ -274,31 +265,26 @@ class ami430(Default):
             last = win.plot.last_vector
             nbpts = win.nbpts.value()
             shortest = win.cb_shortest.checkState()
-            points = gui_dev.parent.ph_instr.linspace_plane(first, last, nbpts, shortest)
-            win.plot.set_points(points)
+            try:
+                points = gui_dev.parent.ph_instr.linspace_plane(first, last, nbpts, shortest)
+            except Exception as e:
+                lab._popErrorC("Error", "Error while calculating sequence", str(e))
+            else:
+                win.plot.set_points(points)
         win.drawPath.clicked.connect(_calculate_sequence)
         def _save_sequence():
             _calculate_sequence()
             points = win.plot.all_points
             dev_sequence = gui_dev.parent.getGuiDevice('sequence')
             lab.setValue(dev_sequence, points.T)
+            gui_dev.sweep = [0, len(points.T)-1, len(points.T)]
+            sig_finished.emit(gui_dev, True)
+            win.close()
         win.savePath.clicked.connect(_save_sequence)
-
-
 
         gui_dev._win_sweep = win
         win.focus()
 
-
-        #ok_button.clicked.connect(onOk)
-        #ok_button.clicked.connect(
-        #    lambda: lab.setSweepValues(
-        #        gui_dev,
-        #        spin_start.value(),
-        #        spin_stop.value(),
-        #        spin_npts.value(),
-        #    )
-        #)
 
 ####################
 # Virtual Gates

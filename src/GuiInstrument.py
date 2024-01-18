@@ -14,6 +14,7 @@ class GuiInstrument:
 
         self.instr_dict = {}  # the dict from json file (as is (not updated!)). Used ONLY for driver with extra args
         self.ph_instr = None
+        self.loading = False # True when the instr is loading
         self.gui_devices = []  # list of GuiDevice
 
     def getDisplayName(self, type="short"):
@@ -150,7 +151,9 @@ class GuiDevice:
                 return str_val
             except: pass
         if isinstance(self.cache_value, np.ndarray):
-            return np.array_str(self.cache_value, max_line_width=9999)
+            with np.printoptions(threshold=5):
+                return str(self.cache_value)
+                #return np.array_str(self.cache_value, max_line_width=9999)
         else:
             return str(self.cache_value)
 

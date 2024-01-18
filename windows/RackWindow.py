@@ -148,6 +148,7 @@ class RackWindow(Window):
     def onAddInstrumentTrigger(self):
         self.window_AddInstrument()
         self.win_add.focus()
+        self.win_add.cb_instr.setFocus(True)
 
     def onRemoveInstrumentTrigger(self):
         if isinstance(gui_instr := self.tree.selectedData(), GuiInstrument):
@@ -199,6 +200,7 @@ class RackWindow(Window):
         instr_item.setText(2, gui_instr.address)
         instr_item.setText(3, gui_instr.ph_class.split('.')[-1])
         instr_item.setFont(3, self.fixed_font)
+        instr_item.setIcon(4, QtGui.QIcon("resources/icon-grey.svg"))
 
     def _fillGuiDeviceItem(self, dev_item):
         # fill text of the device item
@@ -238,7 +240,6 @@ class RackWindow(Window):
         # then add and fill its devices
         for gui_dev in gui_instr.gui_devices:
             self._addGuiDevice(gui_dev)
-        self.win_add.close()
 
     def gui_updateGuiDevice(self, gui_dev):
         item = self.tree.findItemByData(gui_dev)
@@ -247,13 +248,18 @@ class RackWindow(Window):
 
     def gui_updateGuiInstrument(self, gui_instr):
         item = self.tree.findItemByData(gui_instr)
+        if not item: return
         # refill
         self._fillGuiInstrumentItem(item)
         # update instr status:
-        loaded_text = "Loaded" if gui_instr.isLoaded() else "Loading error"
-        item.setText(4, loaded_text)
-        loaded_icon_path = "resources/icon-success.svg" if gui_instr.isLoaded() else "resources/icon-error.svg"
-        item.setIcon(4, QtGui.QIcon(loaded_icon_path))
+        if gui_instr.loading:
+            item.setText(4, "Loading...")
+            item.setIcon(4, QtGui.QIcon("resources/icon-grey.svg"))
+        else:
+            loaded_text = "Loaded" if gui_instr.isLoaded() else "Loading error"
+            item.setText(4, loaded_text)
+            loaded_icon_path = "resources/icon-success.svg" if gui_instr.isLoaded() else "resources/icon-error.svg"
+            item.setIcon(4, QtGui.QIcon(loaded_icon_path))
         self.onSelectionChanged()
 
     def gui_onNewDevicesAdded(self, gui_instr, gui_dev_list):
@@ -304,6 +310,7 @@ class RackWindow(Window):
         wid.setLayout(layout)
 
         cb_instr = Combobox()
+        self.win_add.cb_instr = cb_instr
         layout.addWidget(cb_instr)
         le_address = QLineEdit()
         le_address.setPlaceholderText("Address")
@@ -366,6 +373,7 @@ class RackWindow(Window):
             slot = int(cb_slot.currentText()) if cb_slot.isEnabled() else None
             instr_dict = cb_instr.currentData()
             self.lab.newInstrumentFromRack(nickname, address, slot, instr_dict)
+            self.win_add.close()
             self.tree.setFocus(True)
 
         bt_ok.clicked.connect(okClicked)
@@ -540,7 +548,7 @@ class RackWindow(Window):
         win = self.win_editdevices
 
         win.setWindowTitle("Add devices " + gui_instr.getDisplayName())
-        win.setWindowIcon(QtGui.QIcon("resources/resources/instruments.png"))
+        win.setWindowIcon(QtGui.QIcon("resources/instruments.svg"))
         wid = QWidget()
         win.setCentralWidget(wid)
         layout = QGridLayout()

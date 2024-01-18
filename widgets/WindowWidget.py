@@ -11,9 +11,11 @@ class Window(QMainWindow):
     lab = None
     windows = []
 
-    def __init__(self):
+    def __init__(self, init_shortcuts=False):
         super().__init__()
         Window.windows.append(self)
+        if init_shortcuts:
+            self.initShortcuts()
     
     def focus(self):
         self.setFocus(True)
@@ -27,12 +29,6 @@ class Window(QMainWindow):
             win.close()
         Window.windows.clear()
         Window.lab = None
-
-    @staticmethod
-    def initShortcutsAll(lab):
-        Window.lab = lab
-        [win.initShortcuts() for win in Window.windows]
-
 
     # i could not find a way to do QApplication-wide shortcuts
     # so the global shortcuts are implemented at QMainWindow level.
