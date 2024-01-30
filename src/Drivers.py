@@ -69,13 +69,11 @@ class Default:
         def success(instr):
             gui_instr.ph_instr = instr
             onFinished(gui_instr, None)
-            #defaul: lab.loadInstrumentFinished(gui_instr, None)
             del gui_instr._loading_thread
         thread.loaded_signal.connect(success)
         
         def error(err):
             onFinished(gui_instr, err)
-            #default: lab.loadInstrumentFinished(gui_instr, err)
             del gui_instr._loading_thread
         thread.error_signal.connect(error)
 
@@ -159,6 +157,7 @@ class Default:
         ok_button.clicked.connect(onOk)
 
         gui_dev._win_sweep = win
+        spin_start.setFocus(True)
         win.show()
 
 

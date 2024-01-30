@@ -10,7 +10,7 @@ class Popup:
     def _excToStr(self, exception):
         return "".join(traceback.format_tb(exception.__traceback__))
     
-    def _popError(self, win_type, title, message, details):
+    def _popError(self, win_type, title, message, details=None):
         # pop an error window
         # win_type:
         #   QMessageBox.Critical

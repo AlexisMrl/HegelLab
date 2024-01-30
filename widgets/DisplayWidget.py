@@ -132,6 +132,10 @@ class DisplayWidget(QMainWindow):
         self.toolBar2.addWidget(self.sb_sigma)
         self.sb_sigma.valueChanged.connect(self.onFilterChanged)
 
+        # -- statusbar --
+        self.lbl_mouse_coord = QLabel()
+        self.statusbar.addWidget(self.lbl_mouse_coord)
+
         ## crosshair/mouse
         self.targets = []
         self._updateImage()
@@ -154,8 +158,22 @@ class DisplayWidget(QMainWindow):
             mousePoint = self.main.vb.mapSceneToView(pos)
             self.vLine.setPos(mousePoint.x())
             self.hLine.setPos(mousePoint.y())
+            x, y = self._coordToIndexes(mousePoint)
+            # coord in statusbar
+            #self.sweep_range = [[0, 1, 1], [0, 1, 1]] # [[start1, stop1, nbpts1], [..2]]
+            try:
+                step = [0, 0]
+                for i in range(len(self.disp_data.sweep_range)):
+                    start, stop, nbpts = self.disp_data.sweep_range[i]
+                    step[i] = (stop-start) / (nbpts-1)
+                sweep_x = round(x*step[0], 6)
+                sweep_y = round(y*step[1], 6)
+                self.lbl_mouse_coord.setText(f"x = {sweep_x}, y = {sweep_y}")
+            except:
+                pass
+            # live trace
             if self.live_trace:
-                self._plotTraces(self.hPlot, self.vPlot, mousePoint)
+                self._plotTraces(self.hPlot, self.vPlot, (x,y))
             self.hLine.setVisible(self.live_trace)
             self.hPlot.setVisible(self.live_trace)
             self.vLine.setVisible(self.live_trace)
@@ -197,16 +215,17 @@ class DisplayWidget(QMainWindow):
         [t.onRemove() for t in self.targets]
         self.targets.clear()
 
-    def _plotTraces(self, h_plot, v_plot, coord):
-        def _coordToIndexes(coord):
-            image_rect = self.disp_data.image_rect
-            raw_data = self.disp_data.raw_data
-            x_index = int((coord.x() - image_rect[0]) / (image_rect[2] / raw_data.shape[0]))
-            y_index = int((coord.y() - image_rect[1]) / (image_rect[3] / raw_data.shape[1]))
-            x_index = min(x_index, raw_data.shape[0]-1); y_index = min(y_index, raw_data.shape[1]-1)
-            x_index = max(x_index, 0);                   y_index = max(y_index, 0)
-            return x_index, y_index
-        x, y = _coordToIndexes(coord)
+    def _coordToIndexes(self, coord):
+        image_rect = self.disp_data.image_rect
+        raw_data = self.disp_data.raw_data
+        x_index = int((coord.x() - image_rect[0]) / (image_rect[2] / raw_data.shape[0]))
+        y_index = int((coord.y() - image_rect[1]) / (image_rect[3] / raw_data.shape[1]))
+        x_index = min(x_index, raw_data.shape[0]-1); y_index = min(y_index, raw_data.shape[1]-1)
+        x_index = max(x_index, 0);                   y_index = max(y_index, 0)
+        return x_index, y_index
+
+    def _plotTraces(self, h_plot, v_plot, indexes):
+        x, y  = indexes
         horiz_trace = self.disp_data.data[:, y]
         vert_trace = self.disp_data.data[x]
         self.horiz_trace = horiz_trace
@@ -293,6 +312,7 @@ class Target(pg.TargetItem):
         self.color = pg.intColor(self.parent.target_color)
         self.parent.target_color += 1
 
+        #super().__init__(pos, pen=pg.mkPen(self.color, width=1), label=True)
         super().__init__(pos, pen=pg.mkPen(self.color, width=1))
         self.setMouseHover(True)
 
@@ -312,4 +332,5 @@ class Target(pg.TargetItem):
 
     def onTargetMove(self, pos=None):
         if pos is None: pos = self.pos()
-        self.parent._plotTraces(self.hPlot, self.vPlot, pos)
+        x, y = self.parent._coordToIndexes(pos)
+        self.parent._plotTraces(self.hPlot, self.vPlot, (x,y))
