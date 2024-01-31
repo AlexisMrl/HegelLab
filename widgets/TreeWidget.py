@@ -130,7 +130,7 @@ class TreeWidget(QTreeWidget):
                 pressKey(Qt.Key_End)
             elif event.modifiers() == Qt.NoModifier:
                 pressKey(Qt.Key_Home)
-        elif key == Qt.Key_X and self.remove_btn:
+        elif (key == Qt.Key_X or key == Qt.Key_Delete) and self.remove_btn:
             self.remove_btn.click()
         else:
             super().keyPressEvent(event)

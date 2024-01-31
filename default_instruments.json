@@ -64,7 +64,7 @@
             "name": "iTest_Be214x",
             "ph_class": "instruments.iTest_be214x",
             "address": "TCPIP::192.168.150.112::5025::SOCKET",
-            "slots": [7, 8, 9],
+            "slots": [1, 2, 3, 4, 5, 6, 7, 8, 9],
             "devices": [
                 {"nickname_multi": ["en_ch1", "en_ch2", "en_ch3", "en_ch4"],
                     "ph_name": "output_en",
@@ -110,7 +110,9 @@
             "ph_class": "instruments.agilent_multi_34410A",
             "address": "USB0::0x2A8D::0x0101::MY57515472::0",
             "devices": [
-                {"ph_name": "readval"}
+                {"ph_name": "readval"},
+                {"ph_name": "nplc"},
+                {"nickname": "mode_(reload_after)", "ph_name": "mode"}
             ]
         },
             

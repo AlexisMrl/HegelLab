@@ -66,6 +66,9 @@ class HegelLab(QObject):
         self.sig_deviceRenamed.connect(rack.gui_onDeviceRenamed)
         self.sig_deviceRenamed.connect(main.gui_onDeviceRenamed)
         self.sig_deviceRenamed.connect(moni.gui_onDeviceRenamed)
+        self.sig_instrumentRenamed.connect(rack.gui_onInstrumentRenamed)
+        self.sig_instrumentRenamed.connect(main.gui_onInstrumentRenamed)
+        self.sig_instrumentRenamed.connect(moni.gui_onInstrumentRenamed)
 
         self.sig_sweepDeviceSet.connect(main.gui_updateSweepDevice)
         self.sig_outDeviceSet.connect(main.gui_updateOutDevice)
@@ -347,9 +350,11 @@ class HegelLab(QObject):
     def renameDevice(self, gui_dev, new_nickname):
         gui_dev.nickname = new_nickname
         self.sig_deviceRenamed.emit(gui_dev)
-        #self.view_main.gui_renameDevice(gui_dev)
-        #self.view_rack.gui_renameDevice(gui_dev)
-        #self.view_monitor.gui_renameDevice(gui_dev)
+    
+    sig_instrumentRenamed = pyqtSignal(GuiInstrument)
+    def renameInstrument(self, gui_instr, new_nickname):
+        gui_instr.nickname = new_nickname
+        self.sig_instrumentRenamed.emit(gui_instr)
 
     # -- SWEEP TREES --
     # sig emitted when add/remove is finished

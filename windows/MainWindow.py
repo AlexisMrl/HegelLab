@@ -190,6 +190,10 @@ class MainWindow(Window):
         for tree in [self.tree_sw, self.tree_out, self.tree_log]:
             if tree.findItemByData(gui_dev):
                 self._makeOrUpdateItem(tree, gui_dev)
+    
+    def gui_onInstrumentRenamed(self, gui_instr):
+        for gui_dev in gui_instr.gui_devices:
+            self.gui_onDeviceRenamed(gui_dev)
 
 
     # -- SWEEP RELATED --

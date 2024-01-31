@@ -206,3 +206,7 @@ class MonitorWindow(Window):
     def gui_onDeviceRenamed(self, gui_dev):
         if self.tree.findItemByData(gui_dev):
             self._makeOrUpdateDeviceItem(gui_dev)
+
+    def gui_onInstrumentRenamed(self, gui_instr):
+        for gui_dev in gui_instr.gui_devices:
+            self.gui_onDeviceRenamed(gui_dev)

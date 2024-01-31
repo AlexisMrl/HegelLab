@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QTreeWidgetItem,
     QAbstractItemView,
     QLabel,
+    QMenu,
 )
 from PyQt5.QtGui import QFontDatabase
 import PyQt5.QtCore as QtCore
@@ -41,10 +42,15 @@ class RackWindow(Window):
 
         self.win_add = Window()
         self.win_editdevices = Window()
+        self.win_instrconfig = Window()
         self.win_set = Window()
         self.win_devconfig = Window()
         self.win_devconfig.gui_dev = None
         self.win_rename = Window()
+
+        # context menu
+        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self.onItemRightClick)
 
         # -- Connect signals to slots --
         self.tree.itemSelectionChanged.connect(self.onSelectionChanged)
@@ -59,7 +65,7 @@ class RackWindow(Window):
         self.pb_set.clicked.connect(self.onSetValueClick)
         self.pb_config.clicked.connect(self.onConfigDeviceClick)
         self.pb_remove_dev.clicked.connect(self.onRemoveDevClick)
-        self.pb_rename.clicked.connect(self.onRenameDevClick)
+        self.pb_rename.clicked.connect(self.onRenameItemClick)
 
 
         self.importFromJSON.triggered.connect(self.lab.importFromJSON)
@@ -177,12 +183,47 @@ class RackWindow(Window):
         if not isinstance(gui_dev, GuiDevice): return
         self.lab.removeGuiDevice(gui_dev)
     
-    def onRenameDevClick(self):
-        gui_dev = self.tree.selectedData()
-        if not isinstance(gui_dev, GuiDevice): return
-        self.window_RenameDevice(gui_dev)
+    def onRenameItemClick(self):
+        gui_dev_or_instr = self.tree.selectedData()
+        self.window_Rename(gui_dev_or_instr)
         self.win_rename.focus()
         self.win_rename.le_value.setFocus(True)
+    
+    def onChangeAddressClick(self):
+        gui_instr = self.tree.selectedData()
+        if not isinstance(gui_instr, GuiInstrument): return
+        self.window_InstrumentConfigWindow(gui_instr)
+        self.win_instrconfig.focus()
+        self.win_instrconfig.le_value.setFocus(True)
+
+    def onItemRightClick(self, point):
+        index = self.tree.indexAt(point)
+        if not index.isValid(): return
+        selected_item = self.tree.itemAt(point)
+        data = self.tree.getData(selected_item)
+
+        menu = QMenu()
+        if isinstance(data, GuiInstrument):
+            menu.addAction("Load/Reload (L)", self.actionLoad.trigger)
+            menu.addAction("Edit devices (E)", self.actionEditDevices.trigger)
+            menu.addAction("Edit address", self.onChangeAddressClick)
+            menu.addAction("Rename", self.onRenameItemClick)
+            menu.addSeparator()
+            menu.addAction("Remove instrument (X)", self.actionRemove.trigger)
+        elif isinstance(data, GuiDevice):
+            # TODO: if dev is bool: addAction("toggle")
+            menu.addAction("Get (space)", self.pb_get.click)
+            menu.addAction("Set (shift+space)", self.pb_set.click)
+            menu.addSeparator()
+            menu.addAction("Rename (r)", self.pb_rename.click)
+            menu.addAction("Config device (c)", self.pb_config.click)
+            menu.addSeparator()
+            menu.addAction("Monitor (m)", lambda: self.itemToggleSOL(self.tree.selectedItem(), 'monitor'))
+            menu.addSeparator()
+            menu.addAction("Remove device (x)", self.pb_remove_dev.click)
+
+
+        menu.exec_(self.tree.mapToGlobal(point))
 
     def _logicalParamStr(self, logical_kwargs):
         string = ''
@@ -293,6 +334,10 @@ class RackWindow(Window):
         # rename the device item in self.tree
         dev_item = self.tree.findItemByData(gui_dev)
         dev_item.setText(0, gui_dev.getDisplayName("long"))
+    
+    def gui_onInstrumentRenamed(self, gui_instr):
+        instr_item = self.tree.findItemByData(gui_instr)
+        instr_item.setText(0, gui_instr.getDisplayName("long"))
 
     # -- end gui_ --
 
@@ -505,11 +550,45 @@ class RackWindow(Window):
     
 
     
-    def window_RenameDevice(self, gui_dev):
+    def window_InstrumentConfigWindow(self, gui_instr):
+        # window with a line edit to change address
+        # TODO: add slot if instr has it
+        win = self.win_instrconfig
+        win.resize(300, 100)
+        win.setWindowTitle("Change address")
+        win.setWindowIcon(QtGui.QIcon("resources/instruments.svg"))
+        wid = QWidget(); win.setCentralWidget(wid)
+        layout = QVBoxLayout(); wid.setLayout(layout)
+        lbl = QLabel("New address for: " + gui_instr.getDisplayName("long"))
+        layout.addWidget(lbl)
+        le_value = QLineEdit(gui_instr.address)
+        layout.addWidget(le_value)
+        win.le_value = le_value
+        bt_ok = QPushButton("Apply")
+        bt_cancel = QPushButton("Cancel")
+        Hlayout = QHBoxLayout()
+        Hlayout.addWidget(bt_ok)
+        Hlayout.addWidget(bt_cancel)
+        layout.addLayout(Hlayout)
+
+        def okClicked():
+            value = le_value.text()
+            gui_instr.address = value
+            self.gui_updateGuiInstrument(gui_instr)
+            win.close()
+
+        def cancelClicked():
+            win.close()
+
+        bt_ok.clicked.connect(okClicked)
+        bt_cancel.clicked.connect(cancelClicked)
+
+
+
+
+    def window_Rename(self, gui_dev_or_instr):
         # window with a line edit to rename the selected item
-        # only for gui_devices for now
-        selected_item = self.tree.selectedItem()
-        data = self.tree.getData(selected_item)
+        data = gui_dev_or_instr
         self.win_rename.resize(300, 100)
         self.win_rename.setWindowTitle("Rename")
         self.win_rename.setWindowIcon(QtGui.QIcon("resources/instruments.svg"))
@@ -532,8 +611,10 @@ class RackWindow(Window):
 
         def okClicked():
             value = le_value.text()
-            selected_item.setText(0, data.getDisplayName("long"))
-            self.lab.renameDevice(data, value)
+            if isinstance(data, GuiInstrument):
+                self.lab.renameInstrument(data, value)
+            elif isinstance(data, GuiDevice):
+                self.lab.renameDevice(data, value)
             self.win_rename.close()
 
         def cancelClicked():
