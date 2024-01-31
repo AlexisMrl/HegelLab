@@ -161,16 +161,17 @@ class DisplayWidget(QMainWindow):
             x, y = self._coordToIndexes(mousePoint)
             # coord in statusbar
             #self.sweep_range = [[0, 1, 1], [0, 1, 1]] # [[start1, stop1, nbpts1], [..2]]
-            try:
-                step = [0, 0]
-                for i in range(len(self.disp_data.sweep_range)):
-                    start, stop, nbpts = self.disp_data.sweep_range[i]
-                    step[i] = (stop-start) / (nbpts-1)
-                sweep_x = round(x*step[0], 6)
-                sweep_y = round(y*step[1], 6)
-                self.lbl_mouse_coord.setText(f"x = {sweep_x}, y = {sweep_y}")
-            except:
-                pass
+            start1, stop1, nbpts1 = self.disp_data.sweep_range[0]
+            start2, stop2, nbpts2 = self.disp_data.sweep_range[1]
+            sweep_x, sweep_y = start1, start2
+
+            step1, step2 = 0, 0
+            if nbpts1 != 1:
+                step1 = (stop1-start1) / (nbpts1 - 1)
+            if nbpts2 != 1:
+                step2 = (stop2-start2) / (nbpts2 - 1)
+
+            self.lbl_mouse_coord.setText(f"x = {round(sweep_x + x*step1, 6)}, y = {round(sweep_y + y*step2, 6)}")
             # live trace
             if self.live_trace:
                 self._plotTraces(self.hPlot, self.vPlot, (x,y))
