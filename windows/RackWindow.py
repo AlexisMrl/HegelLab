@@ -238,7 +238,7 @@ class RackWindow(Window):
         gui_instr = self.tree.getData(instr_item)
         instr_item.setFlags(instr_item.flags() & ~Qt.ItemIsDragEnabled)
         instr_item.setText(0, gui_instr.getDisplayName("long"))
-        instr_item.setText(2, gui_instr.address)
+        instr_item.setText(2, gui_instr.address + (f" - slot {gui_instr.slot}" if gui_instr.slot is not None else ""))
         instr_item.setText(3, gui_instr.ph_class.split('.')[-1])
         instr_item.setFont(3, self.fixed_font)
         instr_item.setIcon(4, QtGui.QIcon("resources/icon-grey.svg"))
@@ -564,6 +564,18 @@ class RackWindow(Window):
         le_value = QLineEdit(gui_instr.address)
         layout.addWidget(le_value)
         win.le_value = le_value
+
+        if gui_instr.slot is not None:
+            lbl_slot = QLabel("Slot: ")
+            slots = gui_instr.instr_dict.get('slots', None)
+            cb_slot = Combobox()
+            for s in slots:
+                cb_slot.addItem(str(s), s)
+            layout.addWidget(lbl_slot)
+            layout.addWidget(cb_slot)
+            cb_slot.setCurrentIndex(gui_instr.slot-1)
+            win.cb_slot = cb_slot
+
         bt_ok = QPushButton("Apply")
         bt_cancel = QPushButton("Cancel")
         Hlayout = QHBoxLayout()
@@ -574,6 +586,8 @@ class RackWindow(Window):
         def okClicked():
             value = le_value.text()
             gui_instr.address = value
+            if gui_instr.slot is not None:
+                gui_instr.slot = win.cb_slot.currentData()
             self.gui_updateGuiInstrument(gui_instr)
             win.close()
 

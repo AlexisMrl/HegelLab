@@ -54,13 +54,14 @@ class Default:
     # a class to inherit from when creating a custom gui for an instrument
 
     @staticmethod
-    def load(lab, gui_instr, onFinished, kwargs={}):
+    def load(lab, gui_instr, onFinished):
         # load the instrument, finish by calling
         # either onFinished(gui_instr, None) or onFinished(gui_instr, err)
 
         nickname = gui_instr.nickname
         ph_class = eval(gui_instr.ph_class)
         address = gui_instr.address
+        kwargs = {}
         if gui_instr.slot is not None:
             kwargs['slot'] = gui_instr.slot
 
@@ -69,15 +70,15 @@ class Default:
         def success(instr):
             gui_instr.ph_instr = instr
             onFinished(gui_instr, None)
-            del gui_instr._loading_thread
+            gui_instr._loading_thread = None
         thread.loaded_signal.connect(success)
         
         def error(err):
             onFinished(gui_instr, err)
-            del gui_instr._loading_thread
+            gui_instr._loading_thread = None
         thread.error_signal.connect(error)
 
-        if hasattr(gui_instr, '_loading_thread'):
+        if gui_instr._loading_thread:
             gui_instr._loading_thread.stop()
         gui_instr._loading_thread = thread # to keep a reference to it
         thread.start()

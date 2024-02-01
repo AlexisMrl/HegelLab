@@ -17,6 +17,8 @@ class GuiInstrument:
         self.loading = False # True when the instr is loading
         self.gui_devices = []  # list of GuiDevice
 
+        self._loading_thread = None  # the thread used to load the instr
+
     def getDisplayName(self, type="short"):
         # 'type'
         #   short: nickname
