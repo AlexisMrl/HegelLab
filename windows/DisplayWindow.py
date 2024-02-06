@@ -88,6 +88,10 @@ class DisplayWindow(Window):
     def gui_onSweepProgress(self, sweep_status):
         self.displays[0].progressSweep(sweep_status)
         self.displays[1].progressSweep(sweep_status)
+    
+    def gui_onSweepFinished(self):
+        self.displays[0].resetHist()
+        self.displays[1].resetHist()
 
 
     # -- signals from toolbar --

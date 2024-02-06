@@ -96,6 +96,7 @@ class HegelLab(QObject):
 
         self.sig_sweepError.connect(self.pop.sweepThreadError)
         self.sig_sweepFinished.connect(main.gui_onSweepFinished)
+        self.sig_sweepFinished.connect(disp.gui_onSweepFinished)
         
 
     # -- GENERAL --

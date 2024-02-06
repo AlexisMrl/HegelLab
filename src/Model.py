@@ -34,13 +34,14 @@ class Model:
         # NOT USED, NOT FINISHED
         # return a string list of instrument classes
         # the criteria for being an instrument is:
-        #    - inheriting from BaseInstrument
-        #    - not being BaseInstrument
         #    - not starting with '_'
+        #    - not being in blacklist
+        #    - not being BaseInstrument
+        #    - inheriting from BaseInstrument
         ret = []
         blacklist = ['instrument_base']
         for instr_str in dir(instruments):
-            if instr_str.startswith("_"):
+            if instr_str.startswith("_") and instr_str not in blacklist:
                 continue
             instr = getattr(instruments, instr_str)
             if not isinstance(instr, type):
@@ -170,10 +171,10 @@ class Model:
         
         # make new dev an actual device of instr
         basedev_dev = basedev[0] if isinstance(basedev, tuple) else basedev
-        new_dev_name = f"_wrap_{basedev_dev.name}"
+        new_dev_name = f"_{basedev_dev.name}"
         if hasattr(instrument, new_dev_name):
             delattr(instrument, new_dev_name)
-        setattr(instrument, f"_wrap_{basedev_dev.name}", new_dev)
+        setattr(instrument, f"_{basedev_dev.name}", new_dev)
         instrument._create_devs_helper()
 
         return new_dev
