@@ -44,6 +44,10 @@ class MainWindow(Window):
         self.folder_path_label = QLabel(self.folder_path)
         self.toolBar.addWidget(self.folder_path_button)
         self.statusBar().addPermanentWidget(self.folder_path_label)
+        # video mode beta
+        self.toolBar.addSeparator()
+        self.video_mode_button = QAction("Video mode (test)")
+        self.toolBar.addAction(self.video_mode_button)
         # display action buttons
         menu_display = QMenu()
         simple_icon = QtGui.QIcon("resources/display1.svg")
@@ -103,9 +107,12 @@ class MainWindow(Window):
         self.actionStartSweep.triggered.connect(self.onTriggerStartSweep)
         self.pause_button.clicked.connect(self.lab.pauseSweep)
         self.abort_button.clicked.connect(self.lab.abortSweep)
+        
+        self.video_mode_button.triggered.connect(self.onTriggerStartVideoMode)
 
     def initShortcuts(self):
         super().initShortcuts()
+        self.short("Shift+V", self.onTriggerStartVideoMode)
 
     def closeEvent(self, event):
         self.lab.askClose(event)
@@ -204,6 +211,12 @@ class MainWindow(Window):
         out_devs = [self.tree_out.getData(item) for item in self.tree_out]
         log_devs = [self.tree_log.getData(item) for item in self.tree_log]
         self.lab.startSweep(sw_devs, out_devs, log_devs)
+    
+    def onTriggerStartVideoMode(self):
+        sw_devs = [self.tree_sw.getData(item) for item in self.tree_sw]
+        out_devs = [self.tree_out.getData(item) for item in self.tree_out]
+        self.lab.showVideo()
+        self.lab.startVideoMode(sw_devs, out_devs)
 
     def gui_onSweepStarted(self, boo=True, text='Running'):
         self.pause_button.setEnabled(boo)

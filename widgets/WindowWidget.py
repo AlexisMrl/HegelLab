@@ -43,7 +43,7 @@ class Window(QMainWindow):
         self.short("w, 1, d", lambda: lab.showDisplay(dual=False))
         self.short("w, 2, d", lambda: lab.showDisplay(dual=True))
         self.short("w, m", lab.showMonitor)
-        self.short("w, s", lab.showMain)
+        self.short("w, v", lab.showVideo)
         self.short("w, w", lab.showMain)
 
         self.short("t, s", lab.view_main.focusTreeSw)

@@ -4,7 +4,7 @@ from IPython import get_ipython
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from windows import MainWindow, RackWindow, DisplayWindow, MonitorWindow
+from windows import MainWindow, RackWindow, DisplayWindow, MonitorWindow, VideoModeWindow
 from widgets import WindowWidget, TreeWidget
 from src import LoaderSaver, Model, Popup, SweepThread#, Shortcuts
 from src.GuiInstrument import GuiInstrument, GuiDevice
@@ -39,6 +39,7 @@ class HegelLab(QObject):
         self.view_rack = rack = RackWindow.RackWindow(self)
         self.view_display = disp = DisplayWindow.DisplayWindow(self)
         self.view_monitor = moni = MonitorWindow.MonitorWindow(self)
+        self.view_video = video = VideoModeWindow.VideoModeWindow(self)
 
         # for drop mime data:
         TreeWidget.TreeWidget.lab = self
@@ -86,6 +87,7 @@ class HegelLab(QObject):
         # sweep related
         self.loop_control = self.model.initLoopControl()
         self.sweep_thread = SweepThread.SweepThread(self.loop_control, self.sig_sweepProgress, self.sig_sweepError, self.sig_sweepFinished)
+        self.video_thread = SweepThread.VideoModeThread(self.sig_frameReady)
 
         self.sig_sweepStarted.connect(lambda: main.gui_onSweepStarted())
         self.sig_sweepStarted.connect(disp.gui_onSweepStarted)
@@ -97,6 +99,8 @@ class HegelLab(QObject):
         self.sig_sweepError.connect(self.pop.sweepThreadError)
         self.sig_sweepFinished.connect(main.gui_onSweepFinished)
         self.sig_sweepFinished.connect(disp.gui_onSweepFinished)
+        
+        self.sig_frameReady.connect(video.gui_onFrameReady)
         
 
     # -- GENERAL --
@@ -112,6 +116,9 @@ class HegelLab(QObject):
 
     def showMonitor(self):
         self.view_monitor.focus()
+    
+    def showVideo(self):
+        self.view_video.focus()
 
     def askClose(self, event):
         if self.pop.askQuit():
@@ -540,6 +547,27 @@ class HegelLab(QObject):
         self.loop_control.abort_enabled = True
         self.loop_control.pause_enabled = False
         self.sig_sweepFinished.emit()
+
+    
+
+    # -- VIDEO MODE --
+    sig_frameReady = pyqtSignal(GuiDevice)
+    def startVideoMode(self, gui_sw_devs, gui_out_devs):
+        # check nb device = 2 and out = 1
+        if len(gui_sw_devs) != 2 or len(gui_out_devs) != 1:
+            #self.pop.videoModeNbDevError()
+            print("video mode: nb dev error")
+            return
+
+        ph_sw_devs, start, stop, npts, ph_out_devs, _ = self._genLists(gui_sw_devs, gui_out_devs, [])
+        alternate = {True: "alternate", False: False}[self.view_main.cb_alternate.isChecked()]
+        self._allocData(gui_out_devs, start, stop, npts, alternate)
+        
+        self.video_thread.initDevs(gui_sw_devs, gui_out_devs, start, stop, npts)
+        self.video_thread.resetIdxs_fn = lambda sta, sto, pts: self._allocData(gui_out_devs, sta, sto, pts, alternate)
+        self.video_thread.start()
+
+
 
 if __name__ == "__main__":
     from PyQt5.QtWidgets import QSplashScreen
