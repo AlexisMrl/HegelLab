@@ -163,15 +163,15 @@ class DisplayWidget(QMainWindow):
             #self.sweep_range = [[0, 1, 1], [0, 1, 1]] # [[start1, stop1, nbpts1], [..2]]
             start1, stop1, nbpts1 = self.disp_data.sweep_range[0]
             start2, stop2, nbpts2 = self.disp_data.sweep_range[1]
-            sweep_x, sweep_y = start1, start2
+            min1, min2 = min(start1, stop1), min(start2, stop2)
 
             step1, step2 = 0, 0
             if nbpts1 != 1:
-                step1 = (stop1-start1) / (nbpts1 - 1)
+                step1 = abs((stop1-start1) / (nbpts1 - 1))
             if nbpts2 != 1:
-                step2 = (stop2-start2) / (nbpts2 - 1)
+                step2 = abs((stop2-start2) / (nbpts2 - 1))
 
-            self.lbl_mouse_coord.setText(f"x = {round(sweep_x + x*step1, 6)}, y = {round(sweep_y + y*step2, 6)}")
+            self.lbl_mouse_coord.setText(f"x = {round(min1 + x*step1, 6)}, y = {round(min2 + y*step2, 6)}")
             # live trace
             if self.live_trace:
                 self._plotTraces(self.hPlot, self.vPlot, (x,y))
@@ -303,8 +303,10 @@ class DisplayWidget(QMainWindow):
     def progressSweep(self, sweep_status):
         self._updateImage()
         current_pts = sweep_status.iteration[0]
-        if current_pts == 1:
-            self.recenter()
+        print(current_pts)
+        if current_pts == 1: self.recenter()
+        if current_pts % 10 == 1:
+            self.resetHist()
 
 
 class Target(pg.TargetItem):

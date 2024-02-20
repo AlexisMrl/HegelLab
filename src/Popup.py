@@ -38,10 +38,10 @@ class Popup:
         self._popErrorW("Warning", "No device is set to sweep")
 
     def sweepZeroPoints(self):
-        self._popError("Warning", "A device is set to sweep 0 points")
+        self._popErrorW("Warning", "A device is set to sweep 0 points")
 
     def sweepStartStopEqual(self):
-        self._popError("Warning", "A device is set to sweep from a value to the same value",)
+        self._popErrorW("Warning", "A device is set to sweep from a value to the same value",)
 
     def instrLoadError(self, exception, nickname=''):
         self._popErrorC(f"Error - {nickname}",
