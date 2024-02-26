@@ -88,6 +88,11 @@ class Popup:
     def devIsNeeded(self):
         self._popErrorW("Warning",
             "This device is needed for another device. Cannot remove it.")
+    
+    def loadingJSONError(self, exception):
+        self._popErrorC("Error",
+            "Error while loading json: " + str(exception),
+            self._excToStr(exception))
 
 
     # -- YES/NO --

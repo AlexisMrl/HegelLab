@@ -152,6 +152,7 @@ class RackWindow(Window):
         self.win_editdevices.focus()
 
     def onAddInstrumentTrigger(self):
+        self.lab.loadInstrList()
         self.window_AddInstrument()
         self.win_add.focus()
         self.win_add.cb_instr.setFocus(True)

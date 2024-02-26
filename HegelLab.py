@@ -47,7 +47,7 @@ class HegelLab(QObject):
         [win.initShortcuts() for win in WindowWidget.Window.windows]
 
         # default instrument list
-        self.default_instr_list = self.loader.importFromJSON('default_instruments.json')
+        self.default_instr_list = []
         self.gui_instruments = []  # list of loaded GuiInstrument
         self.sweep_file_path = ''
 
@@ -97,7 +97,6 @@ class HegelLab(QObject):
         self.sig_sweepError.connect(self.pop.sweepThreadError)
         self.sig_sweepFinished.connect(main.gui_onSweepFinished)
         self.sig_sweepFinished.connect(disp.gui_onSweepFinished)
-        
 
     # -- GENERAL --
 
@@ -401,6 +400,10 @@ class HegelLab(QObject):
         self.sig_monitorDeviceSet.emit(gui_dev, boo)
 
     
+        
+    def loadInstrList(self):
+        self.default_instr_list = self.loader.importFromJSON('default_instruments.json')
+
     def exportToJSON(self):
         self.loader.exportToJSON(self.gui_instruments)
     

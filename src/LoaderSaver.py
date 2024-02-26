@@ -17,10 +17,14 @@ class LoaderSaver:
             path = QFileDialog.getOpenFileName(self.lab.view_rack, 'Open file', '.', "JSON files (*.json)")[0]
         if path == "":
             return []
-        with open(path) as json_file:
-            data = json.load(json_file, object_pairs_hook=OrderedDict)
-        instruments = data.get('instruments')
-        return instruments
+        try:
+            with open(path) as json_file:
+                data = json.load(json_file, object_pairs_hook=OrderedDict)
+            instruments = data.get('instruments')
+            return instruments
+        except Exception as e:
+            self.lab.pop.loadingJSONError(e)
+            return []
 
     def exportToJSON(self, gui_instruments, path=None):
         # open a file dialog to select a json file
