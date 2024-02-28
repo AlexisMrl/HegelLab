@@ -39,6 +39,7 @@ class Window(QMainWindow):
 
         self.short("w, q", self.close)
         self.short("w, i", lab.showRack)
+        self.short("w, r", lab.showRack)
         self.short("w, d", lab.showDisplay)
         self.short("w, 1, d", lambda: lab.showDisplay(dual=False))
         self.short("w, 2, d", lambda: lab.showDisplay(dual=True))

@@ -196,7 +196,9 @@ class DisplayWidget(QMainWindow):
     def onTranspose(self):
         self.disp_data.transpose = not self.disp_data.transpose
         self.disp_data.label_x, self.disp_data.label_y = self.disp_data.label_y, self.disp_data.label_x
+        self.disp_data.image_rect = (self.disp_data.image_rect[1], self.disp_data.image_rect[0], self.disp_data.image_rect[3], self.disp_data.image_rect[2])
         self._updateImage()
+        self.recenter()
 
     def onCbOutChanged(self):
         self._updateImage()
@@ -233,12 +235,17 @@ class DisplayWidget(QMainWindow):
         self.vert_trace = vert_trace
 
         h_x_axis = np.linspace(*self.disp_data.sweep_range[0])
+        v_x_axis = np.linspace(*self.disp_data.sweep_range[1])
+        
+        if self.disp_data.transpose:
+            horiz_trace, vert_trace = vert_trace, horiz_trace
+            h_x_axis, v_x_axis = v_x_axis, h_x_axis
+
         if len(h_x_axis) == len(horiz_trace):
             h_plot.setData(x=h_x_axis, y=horiz_trace)
         if len(np.unique(horiz_trace)) > 2: # autorange only if non-nan val >= 2
             self.horizontal.autoRange()
 
-        v_x_axis = np.linspace(*self.disp_data.sweep_range[1])
         if len(v_x_axis) == len(vert_trace):
             v_plot.setData(x=v_x_axis, y=vert_trace)
         if len(np.unique(vert_trace)) > 2:
@@ -303,7 +310,6 @@ class DisplayWidget(QMainWindow):
     def progressSweep(self, sweep_status):
         self._updateImage()
         current_pts = sweep_status.iteration[0]
-        print(current_pts)
         if current_pts == 1: self.recenter()
         if current_pts % 10 == 1:
             self.resetHist()

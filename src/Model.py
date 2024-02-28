@@ -171,10 +171,11 @@ class Model:
         
         # make new dev an actual device of instr
         basedev_dev = basedev[0] if isinstance(basedev, tuple) else basedev
-        new_dev_name = f"_{basedev_dev.name}"
+        #new_dev_name = f"_{basedev_dev.name}_{gui_dev.nickname}"
+        new_dev_name = f"_{gui_dev.nickname}"
         if hasattr(instrument, new_dev_name):
             delattr(instrument, new_dev_name)
-        setattr(instrument, f"_{basedev_dev.name}", new_dev)
+        setattr(instrument, new_dev_name, new_dev)
         instrument._create_devs_helper()
 
         return new_dev
