@@ -16,6 +16,7 @@ class DisplaySweepData:
         self.raw_data = np.full((1, 1), np.nan)
         self.data = np.full((1, 1), np.nan)
         self.image_rect = (-0.5, -0.5, 1, 1) # x, y, w, h
+        self.steps = [0, 0]
         self.sweep_range = [[0, 1, 1], [0, 1, 1]] # [[start1, stop1, nbpts1], [..2]]
         self.label_x = "x"
         self.label_y = "y"
@@ -25,7 +26,14 @@ class DisplaySweepData:
     def makeImageRect(self):
         start1, stop1, nbpts1 = self.sweep_range[0]
         start2, stop2, nbpts2 = self.sweep_range[1]
-        self.image_rect = [min(start1, stop1), min(start2, stop2), np.abs(stop1-start1), np.abs(stop2-start2)]
+        step1, step2 = 0, 0
+        if nbpts1 != 1: step1 = abs((stop1-start1) / (nbpts1 - 1))
+        if nbpts2 != 1: step2 = abs((stop2-start2) / (nbpts2 - 1))
+        self.steps = [step1, step2]
+        self.image_rect = [min(start1, stop1)-step1/2,
+                           min(start2, stop2)-step2/2,
+                           np.abs(stop1-start1)+step1,
+                           np.abs(stop2-start2)+step2]
     
     def filteredData(self, gui_dev):
         if gui_dev is not None:
@@ -165,11 +173,7 @@ class DisplayWidget(QMainWindow):
             start2, stop2, nbpts2 = self.disp_data.sweep_range[1]
             min1, min2 = min(start1, stop1), min(start2, stop2)
 
-            step1, step2 = 0, 0
-            if nbpts1 != 1:
-                step1 = abs((stop1-start1) / (nbpts1 - 1))
-            if nbpts2 != 1:
-                step2 = abs((stop2-start2) / (nbpts2 - 1))
+            step1, step2 = self.disp_data.steps
 
             self.lbl_mouse_coord.setText(f"x = {round(min1 + x*step1, 6)}, y = {round(min2 + y*step2, 6)}")
             # live trace
