@@ -30,6 +30,7 @@ class SweepThread(QThread):
         self.fn_kwargs = None
         self.status = SweepStatus()
         self.raz_sw_devs = lambda: None
+        self.retroaction_loop_dict = {'enabled': False}
 
     def initSweepKwargs(self, sweep_multi_kwargs):
         self.fn_kwargs = sweep_multi_kwargs
@@ -67,9 +68,30 @@ class SweepThread(QThread):
             for out_dev, val in zip(self.status.out_devs, datas["read_vals"]):
                 out_dev.values[out_dev.sw_idx.current()] = val
     
-        # for sw_dev, val in zip(self.status.sw_devs,
-        # datas["ask_vals"]):
-        # sw_dev.values[*out_dev.idx.current()] = val
+        if self.retroaction_loop_dict['enabled']:
+            self.do_retroaction(self.status)
+        
+        [out_dev.sw_idx.next() for out_dev in self.status.out_devs]
 
         # emit self.progress
         self.sig_progress.emit(self.status)
+    
+    def do_retroaction(self, sweep_status):
+        vds_dev = self.retroaction_loop_dict['vds_dev']
+        ids_dev = self.retroaction_loop_dict['ids_dev']
+
+        ids_val = ids_dev.values[ids_dev.sw_idx.current()]
+        vds_val = vds_dev.values[vds_dev.sw_idx.current()]
+
+        if sweep_status.iteration[0] < self.retroaction_loop_dict['ignore_first_points']:
+            self.retroaction_loop_dict['ids_first_val'] = ids_val
+            return
+            
+        ids_first_val = self.retroaction_loop_dict['ids_first_val']
+        slope = self.retroaction_loop_dict['slope']
+        delta_vds = (ids_val - ids_first_val) / slope
+        new_vds = vds_val + delta_vds
+        print(f"new_vds: {new_vds}")
+        if not self.retroaction_loop_dict['print_only']:
+            vds_dev.getPhDev().set(new_vds)
+            print('value set')

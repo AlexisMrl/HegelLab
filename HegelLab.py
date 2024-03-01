@@ -515,6 +515,17 @@ class HegelLab(QObject):
             "beforewait": self.view_main.sb_before_wait.value(),
             "updown": alternate,
         }
+        
+        # check for retroaction loop
+        retro_win = self.view_main.win_retroaction
+        retroaction_loop = {'enabled': retro_win.group.isChecked()}
+        retroaction_loop['vds_dev'] = retro_win.combo_vds_devs.currentData()
+        retroaction_loop['ids_dev'] = retro_win.combo_ids_devs.currentData()
+        retroaction_loop['slope'] = retro_win.spin_slope.value()
+        retroaction_loop['ignore_first_points'] = retro_win.spin_ignore.value()
+        retroaction_loop['print_only'] = retro_win.cb_print_only.isChecked()
+        self.sweep_thread.retroaction_loop_dict = retroaction_loop
+
 
         # run sweep thread
         self.sweep_thread.initSweepKwargs(sweep_kwargs)

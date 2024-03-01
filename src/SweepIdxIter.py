@@ -48,8 +48,6 @@ class IdxIter:
         self.current_row, self.current_col = row, col
         return col, row
 
-    def current(self, update=True):
+    def current(self):
         tmp_col, tmp_row = self.current_col, self.current_row
-        if update:
-            self.next()
         return tmp_col, tmp_row

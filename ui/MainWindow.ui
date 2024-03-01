@@ -178,7 +178,7 @@
     <item row="1" column="3">
      <widget class="QGroupBox" name="gb_param">
       <property name="title">
-       <string>Parameters</string>
+       <string>Sweep parameters</string>
       </property>
       <layout class="QFormLayout" name="formLayout">
        <item row="0" column="0">
@@ -215,6 +215,20 @@
          </property>
         </widget>
        </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>SET retroaction:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="pb_retroaction">
+         <property name="text">
+          <string>Disabled</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>
@@ -226,7 +240,7 @@
      <x>0</x>
      <y>0</y>
      <width>938</width>
-     <height>25</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>

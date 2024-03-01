@@ -74,6 +74,7 @@ class MainWindow(Window):
 
         self.lab = lab
         self.win_swsetup = Window()
+        self.win_retroaction = self.window_Retroaction()
 
         self.tree_sw.remove_btn = self.sw_remove
         self.tree_out.remove_btn = self.out_remove
@@ -258,3 +259,37 @@ class MainWindow(Window):
             folder_path += "/"
             self.folder_path = folder_path 
             self.folder_path_label.setText(folder_path)
+    
+    # -- retroaction window --
+    def window_Retroaction(self):
+        win = Window()
+        uic.loadUi("ui/RetroactionWindow.ui", win)
+        win.setWindowTitle("Retroaction loop")
+        
+        def onOpen():
+            selected_ids = win.combo_ids_devs.currentData()
+            selected_vds = win.combo_vds_devs.currentData()
+            index_ids, index_vds = -1, -1 # values used to save selected dev position
+            out_devs = [self.tree_out.getData(item) for item in self.tree_out]
+            win.combo_ids_devs.clear()
+            win.combo_vds_devs.clear()
+            for i, dev in enumerate(out_devs):
+                win.combo_ids_devs.addItem(dev.getDisplayName("long", with_instr=True), dev)
+                win.combo_vds_devs.addItem(dev.getDisplayName("long", with_instr=True), dev)
+                if dev is selected_ids: index_ids = i
+                if dev is selected_vds: index_vds = i
+            if selected_ids != -1:
+                win.combo_ids_devs.setCurrentIndex(index_ids)
+            if selected_vds != -1:
+                win.combo_vds_devs.setCurrentIndex(index_vds)
+
+            win.focus()
+            
+        self.pb_retroaction.clicked.connect(onOpen)
+        
+        def onClose(event):
+            self.pb_retroaction.setText("Enabled" if win.group.isChecked() else "Disabled")
+            win.close()
+        win.closeEvent = onClose
+
+        return win
