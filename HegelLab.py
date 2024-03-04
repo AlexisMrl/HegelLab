@@ -433,6 +433,20 @@ class HegelLab(QObject):
         if filename == "": filename = "sweep"
         return folder_path + "/%t_" + filename + ".txt"
 
+    def _makeComment(self, comment, log_devs):
+        # make a comment for the sweep file
+        res = ""
+        for dev in log_devs:
+            try:
+                val = self.model.getValue(dev)
+                res += f"{dev.getfullname()}: {val}\n"
+            except:
+                continue
+        if res != "": res = "Log devices:\n" + res + "\n"
+        if comment != "":
+            res += "Comment:\n" + comment
+        return res
+
     def _startSweepCheckError(self, start, stop, npts, ph_sw_devs, ph_out_devs):
         if None in start or None in stop or None in npts:
             self.pop.sweepMissingDevParameter()
@@ -506,24 +520,24 @@ class HegelLab(QObject):
         if self._startSweepCheckError(start, stop, npts, ph_sw_devs, ph_out_devs):
             self.sig_sweepFinished.emit()
             return
+        
+        comment = self._makeComment(self.view_main.te_comment.toPlainText(), ph_log_devs)
 
         # prepare kw
         sweep_kwargs = {
             "dev": ph_sw_devs, "start": start, "stop": stop, "npts": npts, "out": ph_out_devs,
             "filename": self._prepareFilename(),
-            "extra_conf": [self.view_main.te_comment.toPlainText()] + ph_log_devs,
+            "extra_conf": [comment],
             "beforewait": self.view_main.sb_before_wait.value(),
             "updown": alternate,
         }
         
         # check for retroaction loop
-        retro_win = self.view_main.win_retroaction
-        retroaction_loop = {'enabled': retro_win.group.isChecked()}
-        retroaction_loop['vds_dev'] = retro_win.combo_vds_devs.currentData()
-        retroaction_loop['ids_dev'] = retro_win.combo_ids_devs.currentData()
-        retroaction_loop['slope'] = retro_win.spin_slope.value()
-        retroaction_loop['ignore_first_points'] = retro_win.spin_ignore.value()
-        retroaction_loop['print_only'] = retro_win.cb_print_only.isChecked()
+        retroaction_loop = {'enabled': self.view_main.win_retroaction.group.isChecked()}
+        retroaction_loop['vds_dev'] = self.view_main.win_retroaction.combo_vds_devs.currentData()
+        retroaction_loop['ids_dev'] = self.view_main.win_retroaction.combo_ids_devs.currentData()
+        retroaction_loop['slope'] = self.view_main.win_retroaction.spin_slope.value()
+        retroaction_loop['print_only'] = self.view_main.win_retroaction.cb_print_only.isChecked()
         self.sweep_thread.retroaction_loop_dict = retroaction_loop
 
 
