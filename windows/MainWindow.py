@@ -127,9 +127,9 @@ class MainWindow(Window):
     def _reorder(self, tree, gui_dev, new_row):
         # we always add to last row (new_row is threrefore not used)
         old_item = tree.findItemByData(gui_dev)
-        self._makeOrUpdateItem(tree, gui_dev, force_add=True)
         old_item_row = tree.indexFromItem(old_item).row()
         tree.takeTopLevelItem(old_item_row)
+        self.gui_updateSweepDevice(gui_dev, True)
 
     def onDropSweepDev(self, gui_dev, row):
         if not self.tree_sw.findItemByData(gui_dev):
@@ -162,7 +162,8 @@ class MainWindow(Window):
             tree.setData(dev_item, gui_dev)
             tree.insertTopLevelItem(row, dev_item)
         # filling
-        dev_item.setText(0, gui_dev.getDisplayName("long", with_instr=True))
+        name = gui_dev.getDisplayName("long", with_instr=True)
+        dev_item.setText(0, name)
         if tree == self.tree_sw:
             dev_item.setText(1, str(gui_dev.sweep[2]))
             range_text = str(gui_dev.sweep[:2])
@@ -173,6 +174,12 @@ class MainWindow(Window):
     def gui_updateSweepDevice(self, gui_dev, boo):
         if not boo: self.gui_onDeviceRemoved(gui_dev, self.tree_sw)
         else: self._makeOrUpdateItem(self.tree_sw, gui_dev)
+        for i, item in enumerate(self.tree_sw):  # prepend x: and y:
+            if i > 2: break
+            gui_dev = self.tree_sw.getData(item)
+            name = gui_dev.getDisplayName("long", with_instr=True)
+            name = {0:'x: ', 1:'y: '}.get(i,'') + name
+            item.setText(0, name)
     def gui_updateOutDevice(self, gui_dev, boo):
         if not boo: self.gui_onDeviceRemoved(gui_dev, self.tree_out)
         else: self._makeOrUpdateItem(self.tree_out, gui_dev)
