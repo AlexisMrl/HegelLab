@@ -594,7 +594,7 @@ if __name__ == "__main__":
         sys.stderr = Logger("logs/stderr.txt")
     
     pixmap = QPixmap("./resources/favicon/favicon.png")
-    pixmap = pixmap.scaled(256, 256)
+    pixmap = pixmap.scaled(128, 128)
     splash = QSplashScreen(pixmap)
     splash.showMessage("Loading HegelLab...", alignment=QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter, color=QtCore.Qt.white)
     splash.show()

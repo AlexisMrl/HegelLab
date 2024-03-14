@@ -6,6 +6,9 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QIcon
 import pyqtgraph as pg
+import matplotlib.pyplot as plt
+import matplotlib.cm as mplcm
+import numpy as np
 
 from widgets.WindowWidget import Window
 
@@ -123,11 +126,28 @@ class DisplayWindow(Window):
 
 
     # ----
+    def _buildCmapFromMatplotlib(self, cmap_name):
+        cmap = mplcm.get_cmap(cmap_name)
+        stops = np.linspace(0, 1, 256)
+        colors = [cmap(s) for s in stops]
+        colors = [(int(r*255), int(g*255), int(b*255), int(a*255)) for r, g, b, a in colors]
+        ticks = list(zip(stops, colors))
+        return ticks
+    
+    def _getCmapFromPyqtgraph(self, cmap_name):
+        cm = pg.colormap.get(cmap_name)
+        stops = cm.getStops()
+        ticks = [(stop, tuple(color)) for stop, color in zip(stops[0], stops[1])]
+        return ticks
+
     def _setupGradientList(self):
-        cm_to_add = ['CET-D1']
-        for cm_str in cm_to_add:
-            cm = pg.colormap.get(cm_str)
-            stops = cm.getStops()
-            ticks = [(stop, tuple(color)) for stop, color in zip(stops[0], stops[1])]
-            pg.graphicsItems.GradientEditorItem.Gradients[cm_str] = {'ticks': ticks, 'mode': 'rgb'}
+        cm_str = 'CET-D1'
+        ticks = self._getCmapFromPyqtgraph(cm_str)
+        pg.graphicsItems.GradientEditorItem.Gradients[cm_str] = {'ticks': ticks, 'mode': 'rgb'}
+        
+        cm_str = 'RdBu_r'
+        ticks = self._buildCmapFromMatplotlib(cm_str)
+        pg.graphicsItems.GradientEditorItem.Gradients[cm_str] = {'ticks': ticks, 'mode': 'rgb'}
+        
+
 

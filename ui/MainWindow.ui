@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>938</width>
-    <height>534</height>
+    <width>942</width>
+    <height>543</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,47 +15,71 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
-    <item row="1" column="1">
-     <widget class="QGroupBox" name="gb_out">
+    <item row="0" column="3">
+     <widget class="QGroupBox" name="gb_comment">
       <property name="title">
-       <string>Out</string>
+       <string>Comment</string>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_4">
-       <item>
-        <widget class="TreeWidget" name="tree_out">
-         <column>
-          <property name="text">
-           <string>Name</string>
-          </property>
-         </column>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="QPlainTextEdit" name="te_comment"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="1" column="3">
+     <widget class="QGroupBox" name="gb_param">
+      <property name="title">
+       <string>Sweep parameters</string>
+      </property>
+      <layout class="QFormLayout" name="formLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Wait before get (s):</string>
+         </property>
         </widget>
        </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
-         <item>
-          <spacer name="horizontalSpacer_2">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QPushButton" name="out_remove">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="text">
-            <string>Remove</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+       <item row="0" column="1">
+        <widget class="PyScientificSpinBox" name="sb_before_wait">
+         <property name="decimals">
+          <number>5</number>
+         </property>
+         <property name="value">
+          <double>0.020000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Alternate:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="cb_alternate">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>SET retroaction:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="pb_retroaction">
+         <property name="text">
+          <string>Disabled</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -101,18 +125,6 @@
           </widget>
          </item>
         </layout>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="0" column="3">
-     <widget class="QGroupBox" name="gb_comment">
-      <property name="title">
-       <string>Comment</string>
-      </property>
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="0" column="0">
-        <widget class="QPlainTextEdit" name="te_comment"/>
        </item>
       </layout>
      </widget>
@@ -175,59 +187,47 @@
       </layout>
      </widget>
     </item>
-    <item row="1" column="3">
-     <widget class="QGroupBox" name="gb_param">
+    <item row="1" column="1">
+     <widget class="QGroupBox" name="gb_out">
       <property name="title">
-       <string>Sweep parameters</string>
+       <string>Out</string>
       </property>
-      <layout class="QFormLayout" name="formLayout">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Wait before get (s):</string>
-         </property>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <widget class="TreeWidget" name="tree_out">
+         <column>
+          <property name="text">
+           <string>Name</string>
+          </property>
+         </column>
         </widget>
        </item>
-       <item row="0" column="1">
-        <widget class="PyScientificSpinBox" name="sb_before_wait">
-         <property name="decimals">
-          <number>5</number>
-         </property>
-         <property name="value">
-          <double>0.020000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Alternate:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QCheckBox" name="cb_alternate">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_6">
-         <property name="text">
-          <string>SET retroaction:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QPushButton" name="pb_retroaction">
-         <property name="text">
-          <string>Disabled</string>
-         </property>
-        </widget>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="out_remove">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string>Remove</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>
@@ -239,8 +239,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>938</width>
-     <height>26</height>
+     <width>942</width>
+     <height>21</height>
     </rect>
    </property>
   </widget>

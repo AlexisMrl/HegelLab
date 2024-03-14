@@ -78,7 +78,7 @@ class DisplayWidget(QMainWindow):
         self.hist.axis.setWidth(50)
         self.hist.autoHistogramRange()
         self.hist.gradient.sigGradientChanged.connect(lambda: self.hist.gradient.showTicks(False))
-        self.hist.gradient.setColorMap(pg.colormap.get('CET-D1'))
+        self.hist.gradient.menu.actions()[-4].trigger() # pick the last colormap
         self.graph.addItem(self.hist, row=0, col=2)
         # vertical plot
         self.vertical = self.graph.addPlot(row=1, col=1)
