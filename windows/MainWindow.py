@@ -84,6 +84,7 @@ class MainWindow(Window):
         self.actionInstruments.triggered.connect(self.lab.showRack)
         self.actionDisplay.triggered.connect(self.lab.showDisplay)
         self.actionMonitor.triggered.connect(self.lab.showMonitor)
+        self.actionConsole.triggered.connect(self.lab.showConsole)
 
         self.folder_path_button.clicked.connect(self.onSelectSweepPath)
 

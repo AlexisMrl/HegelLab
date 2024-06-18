@@ -2,10 +2,10 @@ import sys
 from IPython import get_ipython
 
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
 
 from windows import MainWindow, RackWindow, DisplayWindow, MonitorWindow
-from widgets import WindowWidget, TreeWidget
+from widgets import WindowWidget, TreeWidget, ConsoleWidget
 from src import LoaderSaver, Model, Popup, SweepThread#, Shortcuts
 from src.GuiInstrument import GuiInstrument, GuiDevice
 from src.SweepIdxIter import IdxIter
@@ -27,7 +27,7 @@ import os
 
 
 class HegelLab(QObject):
-    def __init__(self, app):
+    def __init__(self, app=None):
         super().__init__()
 
         self.app = app
@@ -39,6 +39,7 @@ class HegelLab(QObject):
         self.view_rack = rack = RackWindow.RackWindow(self)
         self.view_display = disp = DisplayWindow.DisplayWindow(self)
         self.view_monitor = moni = MonitorWindow.MonitorWindow(self)
+        self.view_console = console = ConsoleWidget.ConsoleWidget(self)
 
         # for drop mime data:
         TreeWidget.TreeWidget.lab = self
@@ -111,13 +112,16 @@ class HegelLab(QObject):
 
     def showMonitor(self):
         self.view_monitor.focus()
+    
+    def showConsole(self):
+        self.view_console.focus()
 
     def askClose(self, event):
         if self.pop.askQuit():
             self.abortSweep()
             self.sweep_thread.terminate()
-            #self.model.close()
             WindowWidget.Window.killAll()
+            self.view_console.close()
         else:
             event.ignore()
     
@@ -128,6 +132,10 @@ class HegelLab(QObject):
                 continue
             return gui_instr
         return None
+    
+    def instrumentsDict(self):
+        """ for the user in the console, return a dict of the instruments """
+        return {instr.nickname: instr for instr in self.gui_instruments}
 
     # -- RACK --
 
@@ -243,7 +251,6 @@ class HegelLab(QObject):
         self.sig_instrumentLoadStarted.emit(gui_instr)
         eval(gui_instr.driver).load(self, gui_instr, self.loadInstrumentFinished)
         
-    
     sig_instrumentLoadFinished = pyqtSignal(GuiInstrument, object)
     def loadInstrumentFinished(self, gui_instr, exception=None):
         gui_instr.loading = False
@@ -574,34 +581,32 @@ if __name__ == "__main__":
     from PyQt5.QtGui import QPixmap
     from PyQt5 import QtCore
 
-    create_app = False
-    app = None
-    if len(sys.argv) > 1 and sys.argv[1] == "--with-app":
-        create_app = True
-        QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
-        QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
+    """
+    import start_qt_app
+    qApp = start_qt_app.prepare_qt()
+    qApp.setAttribute(Qt.AA_EnableHighDpiScaling)
+    shell_interactive = start_qt_app._interactive
+    """
+    if '--with-app' in sys.argv:
         app = QApplication([])
+        app.setApplicationName("HegelLab")
         app.setApplicationDisplayName("HegelLab")
+        # redirect print to a file
+        sys.stdout = open('logs/stdout.txt', 'w')
+        sys.stderr = open('logs/stderr.txt', 'w')
+        print("stdout and stderr redirected to logs/stdout.txt and logs/stderr.txt")
 
-        class Logger():
-            def __init__(self, filename):
-                self.log = open(filename, "a")
-            def write(self, message):
-                self.log.write(message)
-            def flush(self):
-                pass
-        sys.stdout = Logger("logs/stdout.txt")
-        sys.stderr = Logger("logs/stderr.txt")
-    
-    pixmap = QPixmap("./resources/favicon/favicon.png")
-    pixmap = pixmap.scaled(128, 128)
-    splash = QSplashScreen(pixmap)
+    splash = QSplashScreen(QPixmap("./resources/favicon/favicon.png").scaled(128, 128))
     splash.showMessage("Loading HegelLab...", alignment=QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter, color=QtCore.Qt.white)
     splash.show()
 
-    hl = HegelLab(app)
-    splash.finish(hl.view_main)
+    hl = HegelLab()
     hl.showMain()
+    splash.finish(hl.view_main)
     
-    if create_app:
-        sys.exit(app.exec())
+    if '--with-app' in sys.argv:
+        sys.exit(app.exec_())
+
+    #start_qt_app.start_qt_loop_if_needed()
+    #if '--with-app' in sys.argv:
+        #sys.exit(qApp.exec())
