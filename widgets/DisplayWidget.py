@@ -98,6 +98,7 @@ class DisplayWidget(QMainWindow):
         # cross hair
         self.vLine = pg.InfiniteLine(angle=90, movable=False)
         self.hLine = pg.InfiniteLine(angle=0, movable=False)
+        self.mousex, self.mousey = 0, 0
         self.main.addItem(self.vLine, ignoreBounds=True)
         self.main.addItem(self.hLine, ignoreBounds=True)
         self.main.scene().sigMouseMoved.connect(self.onMouseMoved)
@@ -142,7 +143,11 @@ class DisplayWidget(QMainWindow):
 
         # -- statusbar --
         self.lbl_mouse_coord = QLabel()
+        self.lbl_horiz_mouse_coord = QLabel()
+        self.lbl_vert_mouse_coord = QLabel()
         self.statusbar.addWidget(self.lbl_mouse_coord)
+        self.statusbar.addWidget(self.lbl_horiz_mouse_coord)
+        self.statusbar.addWidget(self.lbl_vert_mouse_coord)
 
         ## crosshair/mouse
         self.targets = []
@@ -161,28 +166,44 @@ class DisplayWidget(QMainWindow):
         event.accept()
 
     def onMouseMoved(self, pos):
+        #self.sweep_range = [[0, 1, 1], [0, 1, 1]] # [[start1, stop1, nbpts1], [..2]]
+        start1, stop1, nbpts1 = self.disp_data.sweep_range[0]
+        start2, stop2, nbpts2 = self.disp_data.sweep_range[1]
+        min1, min2 = min(start1, stop1), min(start2, stop2)
+        step1, step2 = self.disp_data.steps
         if self.main.sceneBoundingRect().contains(pos):
             self.last_mouse_pos = pos
             mousePoint = self.main.vb.mapSceneToView(pos)
             self.vLine.setPos(mousePoint.x())
             self.hLine.setPos(mousePoint.y())
-            x, y = self._coordToIndexes(mousePoint)
+            self.mousex, self.mousey = mousePoint.x(), mousePoint.y()
+            x_ind, y_ind = self._coordToIndexes((self.mousex, self.mousey))
+
             # coord in statusbar
-            #self.sweep_range = [[0, 1, 1], [0, 1, 1]] # [[start1, stop1, nbpts1], [..2]]
-            start1, stop1, nbpts1 = self.disp_data.sweep_range[0]
-            start2, stop2, nbpts2 = self.disp_data.sweep_range[1]
-            min1, min2 = min(start1, stop1), min(start2, stop2)
+            value = self.disp_data.data[x_ind, y_ind]
+            self.lbl_mouse_coord.setText(f"Image: x = {round(min1 + x_ind*step1, 6)}, y = {round(min2 + y_ind*step2, 6)}, z = {round(value, 6)} ")
 
-            step1, step2 = self.disp_data.steps
-
-            self.lbl_mouse_coord.setText(f"x = {round(min1 + x*step1, 6)}, y = {round(min2 + y*step2, 6)}")
             # live trace
             if self.live_trace:
-                self._plotTraces(self.hPlot, self.vPlot, (x,y))
+                self._plotTraces(self.hPlot, self.vPlot, (x_ind,y_ind))
             self.hLine.setVisible(self.live_trace)
             self.hPlot.setVisible(self.live_trace)
             self.vLine.setVisible(self.live_trace)
             self.vPlot.setVisible(self.live_trace)
+        
+        elif self.horizontal.sceneBoundingRect().contains(pos):
+            mousePoint = self.horizontal.vb.mapSceneToView(pos)
+            axis, vals = self.hPlot.getData()
+            if axis is None: return
+            x = np.abs(axis - mousePoint.x()).argmin()
+            self.lbl_horiz_mouse_coord.setText(f"plot left: x = {round(min1+axis[x]*step1, 6)}, y = {round(vals[x], 6)} ")
+        elif self.vertical.sceneBoundingRect().contains(pos):
+            mousePoint = self.vertical.vb.mapSceneToView(pos)
+            axis, vals = self.vPlot.getData()
+            if axis is None: return
+            x = np.abs(axis - mousePoint.x()).argmin()
+            self.lbl_vert_mouse_coord.setText(f"plot right: x = {round(min2+axis[x]*step2, 6)}, y = {round(vals[x], 6)} ")
+            #x, val = 
 
 
     def recenter(self):
@@ -225,8 +246,8 @@ class DisplayWidget(QMainWindow):
     def _coordToIndexes(self, coord):
         image_rect = self.disp_data.image_rect
         raw_data = self.disp_data.raw_data
-        x_index = int((coord.x() - image_rect[0]) / (image_rect[2] / raw_data.shape[0]))
-        y_index = int((coord.y() - image_rect[1]) / (image_rect[3] / raw_data.shape[1]))
+        x_index = int((coord[0] - image_rect[0]) / (image_rect[2] / raw_data.shape[0]))
+        y_index = int((coord[1] - image_rect[1]) / (image_rect[3] / raw_data.shape[1]))
         x_index = min(x_index, raw_data.shape[0]-1); y_index = min(y_index, raw_data.shape[1]-1)
         x_index = max(x_index, 0);                   y_index = max(y_index, 0)
         return x_index, y_index
@@ -238,8 +259,10 @@ class DisplayWidget(QMainWindow):
         self.horiz_trace = horiz_trace
         self.vert_trace = vert_trace
 
-        h_x_axis = np.linspace(*self.disp_data.sweep_range[0])
-        v_x_axis = np.linspace(*self.disp_data.sweep_range[1])
+        h_start, h_stop = min(self.disp_data.sweep_range[0][:2]), max(self.disp_data.sweep_range[0][:2])
+        v_start, v_stop = min(self.disp_data.sweep_range[1][:2]), max(self.disp_data.sweep_range[1][:2])
+        h_x_axis = np.linspace(h_start, h_stop, len(horiz_trace))
+        v_x_axis = np.linspace(v_start, v_stop, len(vert_trace))
         
         if self.disp_data.transpose:
             horiz_trace, vert_trace = vert_trace, horiz_trace
@@ -345,5 +368,5 @@ class Target(pg.TargetItem):
 
     def onTargetMove(self, pos=None):
         if pos is None: pos = self.pos()
-        x, y = self.parent._coordToIndexes(pos)
+        x, y = self.parent._coordToIndexes((pos.x(), pos.y()))
         self.parent._plotTraces(self.hPlot, self.vPlot, (x,y))
