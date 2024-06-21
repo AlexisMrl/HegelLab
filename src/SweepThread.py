@@ -30,7 +30,6 @@ class SweepThread(QThread):
         self.fn_kwargs = None
         self.status = SweepStatus()
         self.raz_sw_devs = lambda: None
-        self.retroaction_loop_dict = {'enabled': False}
 
     def initSweepKwargs(self, sweep_multi_kwargs):
         self.fn_kwargs = sweep_multi_kwargs
@@ -68,14 +67,15 @@ class SweepThread(QThread):
             for out_dev, val in zip(self.status.out_devs, datas["read_vals"]):
                 out_dev.values[out_dev.sw_idx.current()] = val
     
-        if self.retroaction_loop_dict['enabled']:
-            self.do_retroaction(self.status)
+        #if self.retroaction_loop_dict['enabled']:
+            #self.do_retroaction(self.status)
         
         [out_dev.sw_idx.next() for out_dev in self.status.out_devs]
 
         # emit self.progress
         self.sig_progress.emit(self.status)
     
+
     def do_retroaction(self, sweep_status):
         vds_dev = self.retroaction_loop_dict['vds_dev']
         ids_dev = self.retroaction_loop_dict['ids_dev']

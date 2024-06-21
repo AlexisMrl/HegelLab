@@ -272,31 +272,36 @@ class MainWindow(Window):
         win = Window()
         uic.loadUi("ui/RetroactionWindow.ui", win)
         win.setWindowTitle("Retroaction loop")
+        win.setWindowIcon(QtGui.QIcon("resources/favicon/favicon.png"))
         
         def onOpen():
-            selected_ids = win.combo_ids_devs.currentData()
-            selected_vds = win.combo_vds_devs.currentData()
-            index_ids, index_vds = -1, -1 # values used to save selected dev position
-            out_devs = [self.tree_out.getData(item) for item in self.tree_out]
-            win.combo_ids_devs.clear()
-            win.combo_vds_devs.clear()
-            for i, dev in enumerate(out_devs):
-                win.combo_ids_devs.addItem(dev.getDisplayName("long", with_instr=True), dev)
-                win.combo_vds_devs.addItem(dev.getDisplayName("long", with_instr=True), dev)
-                if dev is selected_ids: index_ids = i
-                if dev is selected_vds: index_vds = i
-            if selected_ids != -1:
-                win.combo_ids_devs.setCurrentIndex(index_ids)
-            if selected_vds != -1:
-                win.combo_vds_devs.setCurrentIndex(index_vds)
-
+            selected_st = win.combo_st.currentData()
+            selected_p1 = win.combo_p1.currentData()
+            index_st, index_p1 = -1, -1 # values used to save selected dev position
+            devs = self.lab.getAllGuiDevices()
+            win.combo_st.clear()
+            win.combo_p1.clear()
+            for i, dev in enumerate(devs):
+                win.combo_st.addItem(dev.getDisplayName("long", with_instr=True), dev)
+                win.combo_p1.addItem(dev.getDisplayName("long", with_instr=True), dev)
+                if dev is selected_st: index_st = i
+                if dev is selected_p1: index_p1 = i
+            if selected_st != -1:
+                win.combo_st.setCurrentIndex(index_st)
+            if selected_p1 != -1:
+                win.combo_p1.setCurrentIndex(index_p1)
             win.focus()
             
         self.pb_retroaction.clicked.connect(onOpen)
         
         def onClose(event):
-            self.pb_retroaction.setText("Enabled" if win.group.isChecked() else "Disabled")
-            win.close()
+            if win.gb_retro.isChecked():
+                self.pb_retroaction.setText("Enabled")
+                self.pb_retroaction.setStyleSheet("color: green")
+            else:
+                self.pb_retroaction.setText("Disabled")
+                self.pb_retroaction.setStyleSheet("color: black")
+            event.accept()
         win.closeEvent = onClose
 
         return win

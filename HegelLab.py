@@ -128,6 +128,9 @@ class HegelLab(QObject):
                 continue
             return gui_instr
         return None
+    
+    def getAllGuiDevices(self):
+        return [gui_dev for gui_instr in self.gui_instruments for gui_dev in gui_instr.gui_devices]
 
     # -- RACK --
 
@@ -501,6 +504,32 @@ class HegelLab(QObject):
             for dev in gui_out_devs:
                 dev.values = np.full(npts, np.nan)
                 dev.sw_idx = IdxIter(*npts, *reverse, alternate)
+    
+    def _makeRetroactionFunction(self, ph_sw_devs):
+        win_retro = self.view_main.win_retroaction
+        retro_en = win_retro.gb_retro.isChecked()
+
+        if not retro_en:
+            return None
+
+        st_guidev = win_retro.combo_st.currentData()
+        st_ph_dev = st_guidev.getPhDev()
+        st_first_val = st_ph_dev.get()
+
+        p1_guidev = win_retro.combo_p1.currentData()
+        p1_ph_dev = p1_guidev.getPhDev()
+        coeff_p1 = win_retro.spin_p1.value()
+
+        if p1_ph_dev not in ph_sw_devs:
+            return None
+        else:
+            p1_idx = ph_sw_devs.index(p1_ph_dev)
+
+        def retro_function(datas):
+            st_val = st_first_val + coeff_p1* datas['set_vals'][p1_idx]
+            print(st_val)
+            st_ph_dev.set(st_val)
+        return retro_function
 
     sig_sweepStarted = pyqtSignal(SweepThread.SweepStatus)
     sig_sweepPaused = pyqtSignal()
@@ -522,6 +551,9 @@ class HegelLab(QObject):
             return
         
         comment = self._makeComment(self.view_main.te_comment.toPlainText(), ph_log_devs)
+        
+        # check for retroaction loop
+        retro_function = self._makeRetroactionFunction(ph_sw_devs)
 
         # prepare kw
         sweep_kwargs = {
@@ -530,15 +562,8 @@ class HegelLab(QObject):
             "extra_conf": [comment],
             "beforewait": self.view_main.sb_before_wait.value(),
             "updown": alternate,
+            "exec_before": retro_function,
         }
-        
-        # check for retroaction loop
-        retroaction_loop = {'enabled': self.view_main.win_retroaction.group.isChecked()}
-        retroaction_loop['vds_dev'] = self.view_main.win_retroaction.combo_vds_devs.currentData()
-        retroaction_loop['ids_dev'] = self.view_main.win_retroaction.combo_ids_devs.currentData()
-        retroaction_loop['slope'] = self.view_main.win_retroaction.spin_slope.value()
-        retroaction_loop['print_only'] = self.view_main.win_retroaction.cb_print_only.isChecked()
-        self.sweep_thread.retroaction_loop_dict = retroaction_loop
 
 
         # run sweep thread
