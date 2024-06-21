@@ -64,6 +64,7 @@ class DisplayWindow(Window):
         self.btn_link.triggered.connect(self.toggleLink)
         # transpose:
         self.btn_transpose = self.toolbar.addAction("&Transpose", self.toggleTranspose)
+        self.btn_transpose.setVisible(False) # not implemented yet
 
     def focus(self, dual=None):
         self.dual = dual if dual is not None else self.dual

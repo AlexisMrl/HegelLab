@@ -1,7 +1,7 @@
 from pyHegel.gui import ScientificSpinBox
 from pyHegel import instruments, instruments_base
 from PyQt5 import QtGui, uic
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, QTimer
 from PyQt5.QtWidgets import (
     QWidget,
     QGridLayout,
@@ -32,6 +32,12 @@ class LoadThread(QThread):
         self.nickname = nickname
 
     def _run(self):
+        # load the instrument
+        timer = QTimer()
+        timer.setSingleShot(True)
+        timer.timeout.connect(self.abort)
+        timer.start(60000) # in ms
+
         if self.address:
             instr = self.cls(self.address, **self.kwargs)
         else:
@@ -40,11 +46,15 @@ class LoadThread(QThread):
         instruments_base._globaldict[self.nickname] = instr
         self.loaded_signal.emit(instr)
     
+    def abort(self):
+        self.error_signal.emit(Exception("Timeout reached (60s)"))
+    
     def run(self):
         try:
             self._run()
         except Exception as e:
             self.error_signal.emit(e)
+            self.quit()
 
 ####################
 # Default Driver

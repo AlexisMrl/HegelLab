@@ -176,6 +176,30 @@
                 {"ph_name": "ramp_rate_field_T"},
                 {"nickname": "field_z", "ph_name": "ramp_field_T"}
             ]
+        },
+		{
+            "name": "rs_znb_vna",
+            "ph_class": "instruments.rs_znb_network_analyzer",
+            "address": "USB0::0x0AAD::0x01A2::101744::0",
+			  "devices": [
+				{"ph_name": "bandwidth"},
+				{"ph_name": "bandwidth_selectivity"},
+				{"ph_name": "channel_en"},
+				{"ph_name": "freq_center"},
+				{"ph_name": "freq_span"},
+				{"ph_name": "freq_start"},
+				{"ph_name": "freq_stop"},
+				{"ph_name": "npoints"},
+				{"ph_name": "port_power_en"},
+				{"ph_name": "port_power_level_dBm"},
+				{"ph_name": "readval"},
+				{"ph_name": "sweep_average_count"},
+				{"ph_name": "sweep_average_en"},
+				{"ph_name": "sweep_average_mode"},
+				{"ph_name": "sweep_count"},
+				{"ph_name": "sweep_mode"},
+				{"ph_name": "sweep_time"}
+            ]
         }
     ]
 }

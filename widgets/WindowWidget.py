@@ -46,6 +46,7 @@ class Window(QMainWindow):
         self.short("w, m", lab.showMonitor)
         self.short("w, s", lab.showMain)
         self.short("w, w", lab.showMain)
+        self.short("w, c", lab.showConsole)
 
         self.short("t, s", lab.view_main.focusTreeSw)
         self.short("t, o", lab.view_main.focusTreeOut)
