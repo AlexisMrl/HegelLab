@@ -93,6 +93,10 @@ class Popup:
         self._popErrorC("Error",
             "Error while loading json: " + str(exception),
             self._excToStr(exception))
+    
+    def retroactionMissingDev(self):
+        self._popErrorW("Warning",
+            "Retroaction loop is missing a device.")
 
 
     # -- YES/NO --

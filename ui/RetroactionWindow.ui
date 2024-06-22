@@ -123,9 +123,6 @@
        </item>
        <item row="2" column="2">
         <widget class="PyScientificSpinBox" name="spin_p2">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
          <property name="decimals">
           <number>3</number>
          </property>
@@ -164,7 +161,7 @@
      <x>0</x>
      <y>0</y>
      <width>1277</width>
-     <height>31</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>

@@ -269,6 +269,11 @@ class MainWindow(Window):
             self.folder_path_label.setText(folder_path)
     
     # -- retroaction window --
+    def _tryAutoFindDev(self, name, devs):
+        for i, dev in enumerate(devs):
+            if name in dev.getDisplayName("long", with_instr=True):
+                return i
+        return -1
     def window_Retroaction(self):
         win = Window()
         uic.loadUi("ui/RetroactionWindow.ui", win)
@@ -278,19 +283,31 @@ class MainWindow(Window):
         def onOpen():
             selected_st = win.combo_st.currentData()
             selected_p1 = win.combo_p1.currentData()
-            index_st, index_p1 = -1, -1 # values used to save selected dev position
+            selected_p2 = win.combo_p2.currentData()
+            index_st, index_p1, index_p2 = -1, -1, -1 # values used to save selected dev position
             devs = self.lab.getAllGuiDevices()
             win.combo_st.clear()
             win.combo_p1.clear()
+            win.combo_p2.clear()
             for i, dev in enumerate(devs):
                 win.combo_st.addItem(dev.getDisplayName("long", with_instr=True), dev)
                 win.combo_p1.addItem(dev.getDisplayName("long", with_instr=True), dev)
+                win.combo_p2.addItem(dev.getDisplayName("long", with_instr=True), dev)
                 if dev is selected_st: index_st = i
                 if dev is selected_p1: index_p1 = i
-            if selected_st != -1:
+                if dev is selected_p2: index_p2 = i
+            if selected_st is not None:
                 win.combo_st.setCurrentIndex(index_st)
-            if selected_p1 != -1:
+            elif (i := self._tryAutoFindDev(" ST ", devs)) != -1:
+                win.combo_st.setCurrentIndex(i)
+            if selected_p1 is not None:
                 win.combo_p1.setCurrentIndex(index_p1)
+            elif (i := self._tryAutoFindDev(" P1 ", devs)) != -1:
+                win.combo_p1.setCurrentIndex(i)
+            if selected_p2 is not None:
+                win.combo_p2.setCurrentIndex(index_p2)
+            elif (i := self._tryAutoFindDev(" P2 ", devs)) != -1:
+                win.combo_p2.setCurrentIndex(i)
             win.focus()
             
         self.pb_retroaction.clicked.connect(onOpen)

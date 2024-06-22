@@ -520,22 +520,36 @@ class HegelLab(QObject):
             return None
 
         st_guidev = win_retro.combo_st.currentData()
+        p1_guidev = win_retro.combo_p1.currentData()
+        p2_guidev = win_retro.combo_p2.currentData()
+
+        if st_guidev is None or p1_guidev is None or p2_guidev is None:
+            self.pop.retroactionMissingDev()
+            return
+
         st_ph_dev = st_guidev.getPhDev()
         st_first_val = st_ph_dev.get()
 
-        p1_guidev = win_retro.combo_p1.currentData()
         p1_ph_dev = p1_guidev.getPhDev()
         coeff_p1 = win_retro.spin_p1.value()
 
-        if p1_ph_dev not in ph_sw_devs:
-            return None
-        else:
+        p2_ph_dev = p2_guidev.getPhDev()
+        coeff_p2 = win_retro.spin_p2.value()
+
+        p1_idx, p2_idx = None, None
+        if p1_ph_dev in ph_sw_devs:
             p1_idx = ph_sw_devs.index(p1_ph_dev)
+        if p2_ph_dev in ph_sw_devs:
+            p2_idx = ph_sw_devs.index(p2_ph_dev)
 
         def retro_function(datas):
-            st_val = st_first_val + coeff_p1* datas['set_vals'][p1_idx]
-            print(st_val)
+            st_val = st_first_val
+            st_val += coeff_p1 * p1_ph_dev.get() if p1_idx is not None else 0
+            st_val += coeff_p2 * p2_ph_dev.get() if p2_idx is not None else 0
             st_ph_dev.set(st_val)
+            if datas['iter_part'] == datas['iter_total']:
+                print("last iteration")
+                st_ph_dev.set(st_first_val)
         return retro_function
 
     sig_sweepStarted = pyqtSignal(SweepThread.SweepStatus)
@@ -613,6 +627,8 @@ if __name__ == "__main__":
     shell_interactive = start_qt_app._interactive
     """
     if '--with-app' in sys.argv:
+        QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
+        QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
         app = QApplication([])
         app.setApplicationName("HegelLab")
         app.setApplicationDisplayName("HegelLab")
