@@ -66,14 +66,14 @@ Note: live view for higher than two swept devices not supported.
 | right arrow | increase history size |
 
 # Packages
-Need python in version `>=3.8`, an installation of PyHegel and the package `pyqtgraph` in version `>=0.12.3`.
+Need python in version `>=3.8`, an installation of PyHegel, the package `pyqtgraph` in version `>=0.12.3` and qtconsole.
 
 # Installation (wip)
 
 Installation procecure (the whole thing: python3, PyHegel and HegelLab):
 ```py
 # conda create and install packages:
-conda create -n py311 -c conda-forge python=3.11 ipython numpy scipy pyqt matplotlib pyserial pythonnet pypdf2 pytz pyqtgraph=0.13.1 pyvisa
+conda create -n py311 -c conda-forge python=3.11 ipython numpy scipy pyqt matplotlib pyserial pythonnet pypdf2 pytz pyqtgraph=0.13.1 pyvisa qtconsole
 conda activate py311
 # install PyHegel
 cd <PyHegel dir>

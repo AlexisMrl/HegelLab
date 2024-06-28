@@ -196,13 +196,13 @@ class DisplayWidget(QMainWindow):
             axis, vals = self.hPlot.getData()
             if axis is None: return
             x = np.abs(axis - mousePoint.x()).argmin()
-            self.lbl_horiz_mouse_coord.setText(f"plot left: x = {round(min1+axis[x]*step1, 6)}, y = {round(vals[x], 6)} ")
+            self.lbl_horiz_mouse_coord.setText(f"plot left: x = {round(axis[x], 6)}, y = {round(vals[x], 6)} ")
         elif self.vertical.sceneBoundingRect().contains(pos):
             mousePoint = self.vertical.vb.mapSceneToView(pos)
             axis, vals = self.vPlot.getData()
             if axis is None: return
             x = np.abs(axis - mousePoint.x()).argmin()
-            self.lbl_vert_mouse_coord.setText(f"plot right: x = {round(min2+axis[x]*step2, 6)}, y = {round(vals[x], 6)} ")
+            self.lbl_vert_mouse_coord.setText(f"plot right: x = {round(axis[x], 6)}, y = {round(vals[x], 6)} ")
             #x, val = 
 
 
